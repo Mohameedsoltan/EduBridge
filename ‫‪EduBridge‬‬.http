@@ -1,0 +1,6 @@
+@_‫‪EduBridge‬‬_HostAddress = http://localhost:5014
+
+GET {{_‫‪EduBridge‬‬_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
