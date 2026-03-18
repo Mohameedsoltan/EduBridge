@@ -3917,19 +3917,19 @@
     ]
   },
   "packageFolders": {
-    "/home/nesmaabdelmaboud/.nuget/packages/": {}
+    "/home/karimmahmoud/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/run/media/nesmaabdelmaboud/New Volume/EDUProject/‫‪EduBridge‬‬/‫‪EduBridge‬‬.csproj",
-      "projectName": "‫‪EduBridge‬‬",
-      "projectPath": "/run/media/nesmaabdelmaboud/New Volume/EDUProject/‫‪EduBridge‬‬/‫‪EduBridge‬‬.csproj",
-      "packagesPath": "/home/nesmaabdelmaboud/.nuget/packages/",
-      "outputPath": "/run/media/nesmaabdelmaboud/New Volume/EDUProject/‫‪EduBridge‬‬/obj/",
+      "projectUniqueName": "/home/karimmahmoud/Documents/‫‪EduBridge‬‬/EduBridge.csproj",
+      "projectName": "EduBridge",
+      "projectPath": "/home/karimmahmoud/Documents/‫‪EduBridge‬‬/EduBridge.csproj",
+      "packagesPath": "/home/karimmahmoud/.nuget/packages/",
+      "outputPath": "/home/karimmahmoud/Documents/‫‪EduBridge‬‬/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/home/nesmaabdelmaboud/.nuget/NuGet/NuGet.Config"
+        "/home/karimmahmoud/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
