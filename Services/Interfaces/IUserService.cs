@@ -1,6 +1,8 @@
 ﻿using EduBridge.Abstractions;
 using EduBridge.Contracts.User;
 
+namespace EduBridge.Services.Interfaces;
+
 public interface IUserService
 {
     // Queries
@@ -8,7 +10,7 @@ public interface IUserService
     Task<Result<UserResponse>> GetUserByIdAsync(string userId, CancellationToken cancellationToken = default);
     Task<Result<IEnumerable<UserResponse>>> GetAllUsersAsync(CancellationToken cancellationToken = default);
 
-    // Profile operations
+    // Profile operationsؤ
     Task<Result<UserProfileResponse>> UpdateProfileAsync(string userId, UpdateUserRequest request, CancellationToken cancellationToken = default);
     Task<Result> UploadProfileImageAsync(string userId, IFormFile image, CancellationToken cancellationToken = default);
     Task<Result> ChangePasswordAsync(string userId, ChangePasswordRequest request, CancellationToken cancellationToken = default);
@@ -20,5 +22,5 @@ public interface IUserService
     Task<Result> ClearSkillsAsync(string userId, CancellationToken cancellationToken = default);
 
     // Admin operations
-        Task<Result> AddAsync(CreateUserRequest request, CancellationToken cancellationToken = default);
+    Task<Result> AddAsync(CreateUserRequest request, CancellationToken cancellationToken = default);
 }
