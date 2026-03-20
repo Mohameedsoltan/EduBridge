@@ -1,10 +1,10 @@
-    using EduBridge.Abstractions;
-    using EduBridge.Abstractions.Services;
-    using EduBridge.Contracts.Doctor;
+using EduBridge.Abstractions;
+using EduBridge.Contracts.Doctor;
 using EduBridge.Entities;
 using EduBridge.Errors;
 using EduBridge.Persistence;
 using EduBridge.Services.Interfaces;
+using MapsterMapper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,7 +12,8 @@ namespace EduBridge.Services;
 
 public class DoctorService(
     ApplicationDbContext context,
-    UserManager<ApplicationUser> userManager) : IDoctorService
+    UserManager<ApplicationUser> userManager,
+    IMapper mapper) : IDoctorService
 {
     public async Task<Result<IEnumerable<DoctorResponse>>> GetAllAsync(
         CancellationToken cancellationToken = default)
@@ -22,7 +23,7 @@ public class DoctorService(
             .Include(d => d.User)
             .ToListAsync(cancellationToken);
 
-        return Result.Success<IEnumerable<DoctorResponse>>(doctors.Select(MapToResponse));
+        return Result.Success<IEnumerable<DoctorResponse>>(mapper.Map<IEnumerable<DoctorResponse>>(doctors));
     }
 
     public async Task<Result<DoctorResponse>> GetByIdAsync(
@@ -36,7 +37,7 @@ public class DoctorService(
         if (doctor is null)
             return Result.Failure<DoctorResponse>(DoctorErrors.DoctorNotFound);
 
-        return Result.Success(MapToResponse(doctor));
+        return Result.Success(mapper.Map<DoctorResponse>(doctor));
     }
 
     public async Task<Result<IEnumerable<DoctorResponse>>> GetAvailableDoctorsAsync(
@@ -48,7 +49,7 @@ public class DoctorService(
             .Where(d => d.AvailableTeams > 0)
             .ToListAsync(cancellationToken);
 
-        return Result.Success<IEnumerable<DoctorResponse>>(doctors.Select(MapToResponse));
+        return Result.Success<IEnumerable<DoctorResponse>>(mapper.Map<IEnumerable<DoctorResponse>>(doctors));
     }
 
     public async Task<Result> CreateAsync(
@@ -114,16 +115,4 @@ public class DoctorService(
 
         return Result.Success();
     }
-
-    private static DoctorResponse MapToResponse(Doctor d) => new(
-        d.Id,
-        d.UserId,
-        $"{d.User.FirstName} {d.User.LastName}",
-        d.Department,
-        d.AcademicTitle,
-        d.OfficeLocation,
-        d.MaxTeams,
-        d.AvailableTeams,
-        d.IsAvailable
-    );
 }

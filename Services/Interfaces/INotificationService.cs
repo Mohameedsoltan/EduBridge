@@ -1,6 +1,7 @@
 ﻿using EduBridge.Abstractions;
 using EduBridge.Abstractions.Consts;
 using EduBridge.Contracts.Notification;
+using NotificationType = EduBridge.Abstractions.Consts.NotificationType;
 
 namespace EduBridge.Services.Interfaces;
 
@@ -15,5 +16,6 @@ public interface INotificationService
     Task<Result> MarkAllAsReadAsync(string userId, CancellationToken cancellationToken = default);
 
     // Internal - called by other services
-    Task<Result> SendAsync(string userId, NotificationType type, string message, Guid? relatedEntityId, CancellationToken cancellationToken = default);
+    Task<Result> SendAsync(string userId, NotificationType type, string message, Guid? relatedEntityId,
+        CancellationToken cancellationToken = default);
 }

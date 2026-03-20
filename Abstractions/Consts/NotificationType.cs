@@ -5,5 +5,5 @@ public enum NotificationType
     JoinRequestReceived, JoinRequestAccepted, JoinRequestRejected,
     TaRequestReceived, TaRequestAccepted, TaRequestRejected,
     TeamMemberJoined, RatingReceived,
-    TeamInviteReceived, TeamInviteAccepted, TeamInviteRejected
+    TeamInviteReceived, TeamInviteAccepted, TeamInviteRejected,DoctorRequestReceived
 }

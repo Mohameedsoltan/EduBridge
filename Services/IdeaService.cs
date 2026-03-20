@@ -4,13 +4,15 @@ using EduBridge.Entities;
 using EduBridge.Errors;
 using EduBridge.Persistence;
 using EduBridge.Services.Interfaces;
+using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 
 namespace EduBridge.Services;
 
 public class IdeaService(
     ApplicationDbContext context,
-    IIdeaTagService tagService) : IIdeaService
+    IIdeaTagService tagService,
+    IMapper mapper) : IIdeaService
 {
     public async Task<Result<IdeaResponse>> GetByIdAsync(
         Guid id, CancellationToken cancellationToken = default)
@@ -25,7 +27,7 @@ public class IdeaService(
         if (idea is null)
             return Result.Failure<IdeaResponse>(IdeaErrors.IdeaNotFound);
 
-        return Result.Success(MapToResponse(idea));
+        return Result.Success(mapper.Map<IdeaResponse>(idea));
     }
 
     public async Task<Result<IEnumerable<IdeaResponse>>> GetAllAsync(
@@ -38,7 +40,7 @@ public class IdeaService(
             .Include(i => i.Team)
             .ToListAsync(cancellationToken);
 
-        return Result.Success<IEnumerable<IdeaResponse>>(ideas.Select(MapToResponse));
+        return Result.Success(mapper.Map<IEnumerable<IdeaResponse>>(ideas));
     }
 
     public async Task<Result<IEnumerable<IdeaResponse>>> GetByCategoryAsync(
@@ -52,7 +54,7 @@ public class IdeaService(
             .Where(i => i.CategoryId == categoryId)
             .ToListAsync(cancellationToken);
 
-        return Result.Success<IEnumerable<IdeaResponse>>(ideas.Select(MapToResponse));
+        return Result.Success(mapper.Map<IEnumerable<IdeaResponse>>(ideas));
     }
 
     public async Task<Result<IEnumerable<IdeaResponse>>> GetByTagAsync(
@@ -66,19 +68,18 @@ public class IdeaService(
             .Where(i => i.Tags.Any(t => t.Id == tagId))
             .ToListAsync(cancellationToken);
 
-        return Result.Success<IEnumerable<IdeaResponse>>(ideas.Select(MapToResponse));
+        return Result.Success(mapper.Map<IEnumerable<IdeaResponse>>(ideas));
     }
 
     public async Task<Result<IdeaResponse>> CreateAsync(
-        CreateIdeaRequest request, CancellationToken cancellationToken = default)
+        Guid teamId, CreateIdeaRequest request, CancellationToken cancellationToken = default)
     {
         var teamHasIdea = await context.Ideas
-            .AnyAsync(i => i.TeamId == request.TeamId, cancellationToken);
+            .AnyAsync(i => i.TeamId == teamId, cancellationToken);
 
         if (teamHasIdea)
             return Result.Failure<IdeaResponse>(IdeaErrors.TeamAlreadyHasIdea);
 
-        // Resolve tags — get or create each one under the given category
         var tagIds = new List<Guid>();
         foreach (var tagName in request.Tags)
         {
@@ -97,7 +98,7 @@ public class IdeaService(
             Title = request.Title,
             Description = request.Description,
             RepositoryUrl = request.RepositoryUrl,
-            TeamId = request.TeamId,
+            TeamId = teamId,
             CategoryId = request.CategoryId,
             Tags = tags
         };
@@ -108,7 +109,7 @@ public class IdeaService(
         await context.Entry(idea).Reference(i => i.Category).LoadAsync(cancellationToken);
         await context.Entry(idea).Reference(i => i.Team).LoadAsync(cancellationToken);
 
-        return Result.Success(MapToResponse(idea));
+        return Result.Success(mapper.Map<IdeaResponse>(idea));
     }
 
     public async Task<Result<IdeaResponse>> UpdateAsync(
@@ -123,17 +124,10 @@ public class IdeaService(
         if (idea is null)
             return Result.Failure<IdeaResponse>(IdeaErrors.IdeaNotFound);
 
-        if (request.Title is not null)
-            idea.Title = request.Title;
-
-        if (request.Description is not null)
-            idea.Description = request.Description;
-
-        if (request.RepositoryUrl is not null)
-            idea.RepositoryUrl = request.RepositoryUrl;
-
-        if (request.CategoryId is not null)
-            idea.CategoryId = request.CategoryId.Value;
+        if (request.Title is not null) idea.Title = request.Title;
+        if (request.Description is not null) idea.Description = request.Description;
+        if (request.RepositoryUrl is not null) idea.RepositoryUrl = request.RepositoryUrl;
+        if (request.CategoryId is not null) idea.CategoryId = request.CategoryId.Value;
 
         if (request.Tags is not null)
         {
@@ -155,7 +149,7 @@ public class IdeaService(
 
         await context.SaveChangesAsync(cancellationToken);
 
-        return Result.Success(MapToResponse(idea));
+        return Result.Success(mapper.Map<IdeaResponse>(idea));
     }
 
     public async Task<Result> DeleteAsync(
@@ -172,15 +166,4 @@ public class IdeaService(
 
         return Result.Success();
     }
-
-    private static IdeaResponse MapToResponse(Idea idea) => new(
-        idea.Id,
-        idea.Title,
-        idea.Description,
-        idea.RepositoryUrl,
-        idea.Category.Name,
-        idea.Tags.Select(t => t.Name),
-        idea.Team.Name,
-        idea.CreatedAt
-    );
 }

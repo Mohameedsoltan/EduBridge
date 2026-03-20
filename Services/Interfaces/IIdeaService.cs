@@ -12,7 +12,7 @@ public interface IIdeaService
     Task<Result<IEnumerable<IdeaResponse>>> GetByTagAsync(Guid tagId, CancellationToken cancellationToken = default);
 
     // Team leader operations
-    Task<Result<IdeaResponse>> CreateAsync(CreateIdeaRequest request, CancellationToken cancellationToken = default);
+    Task<Result<IdeaResponse>> CreateAsync(Guid teamId, CreateIdeaRequest request, CancellationToken cancellationToken = default);
     Task<Result<IdeaResponse>> UpdateAsync(Guid id, UpdateIdeaRequest request, CancellationToken cancellationToken = default);
     Task<Result> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

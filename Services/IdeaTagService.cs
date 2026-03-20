@@ -4,21 +4,24 @@ using EduBridge.Entities;
 using EduBridge.Errors;
 using EduBridge.Persistence;
 using EduBridge.Services.Interfaces;
+using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 
 namespace EduBridge.Services;
 
-public class IdeaTagService(ApplicationDbContext context) : IIdeaTagService
+public class IdeaTagService(
+    ApplicationDbContext context,
+    IMapper mapper) : IIdeaTagService
 {
     public async Task<Result<IEnumerable<IdeaTagResponse>>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
         var tags = await context.IdeaTags
             .AsNoTracking()
-            .Select(t => new IdeaTagResponse(t.Id, t.Name, t.Category.Name))
+            .Include(t => t.Category)
             .ToListAsync(cancellationToken);
 
-        return Result.Success<IEnumerable<IdeaTagResponse>>(tags);
+        return Result.Success<IEnumerable<IdeaTagResponse>>(mapper.Map<IEnumerable<IdeaTagResponse>>(tags));
     }
 
     public async Task<Result<IEnumerable<IdeaTagResponse>>> GetByCategoryAsync(
@@ -26,11 +29,11 @@ public class IdeaTagService(ApplicationDbContext context) : IIdeaTagService
     {
         var tags = await context.IdeaTags
             .AsNoTracking()
+            .Include(t => t.Category)
             .Where(t => t.CategoryId == categoryId)
-            .Select(t => new IdeaTagResponse(t.Id, t.Name, t.Category.Name))
             .ToListAsync(cancellationToken);
 
-        return Result.Success<IEnumerable<IdeaTagResponse>>(tags);
+        return Result.Success<IEnumerable<IdeaTagResponse>>(mapper.Map<IEnumerable<IdeaTagResponse>>(tags));
     }
 
     public async Task<Result<Guid>> GetOrCreateAsync(
@@ -84,7 +87,7 @@ public class IdeaTagService(ApplicationDbContext context) : IIdeaTagService
 
         await context.SaveChangesAsync(cancellationToken);
 
-        return Result.Success(new IdeaTagResponse(tag.Id, tag.Name, tag.Category.Name));
+        return Result.Success(mapper.Map<IdeaTagResponse>(tag));
     }
 
     public async Task<Result> DeleteAsync(

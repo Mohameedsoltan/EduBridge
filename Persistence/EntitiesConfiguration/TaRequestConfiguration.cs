@@ -3,9 +3,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace EduBridge.Persistence.EntitiesConfiguration;
 
-public class TaRequestConfiguration : SoftDeleteConfiguration<TARequest>
+public class TaRequestConfiguration : SoftDeleteConfiguration<TaRequest>
 {
-    protected override void ConfigureEntity(EntityTypeBuilder<TARequest> builder)
+    protected override void ConfigureEntity(EntityTypeBuilder<TaRequest> builder)
     {
         builder.HasOne(x => x.Team)
             .WithMany(x => x.TARequests)

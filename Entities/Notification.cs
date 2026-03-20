@@ -1,4 +1,4 @@
-using EduBridge.Enums;
+using EduBridge.Abstractions.Consts;
 
 namespace EduBridge.Entities;
 
