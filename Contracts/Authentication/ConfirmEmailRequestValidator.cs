@@ -9,7 +9,7 @@ public class ConfirmEmailRequestValidator : AbstractValidator<ConfirmEmailReques
         RuleFor(x => x.UserId)
             .NotEmpty().WithMessage("User ID is required");
 
-        RuleFor(x => x.Token)
+        RuleFor(x => x.Code)
             .NotEmpty().WithMessage("Token is required");
     }
 }
