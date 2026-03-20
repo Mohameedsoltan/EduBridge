@@ -1,0 +1,86 @@
+using EduBridge.Contracts.Doctor;
+using EduBridge.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using EduBridge.Abstractions.Consts;
+using EduBridge.Abstractions;
+
+namespace EduBridge.Controllers;
+
+[Route("[controller]")]
+[ApiController]
+[Authorize]
+[Authorize(Roles = DefaultRoles.Admin)]
+public class DoctorsController(
+    IDoctorService doctorService,
+    ILogger<DoctorsController> logger) : ControllerBase
+{
+    private readonly IDoctorService _doctorService = doctorService;
+    private readonly ILogger<DoctorsController> _logger = logger;
+
+    [HttpGet("")]
+    public async Task<IActionResult> GetAllAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Fetching all doctors");
+
+        var result = await _doctorService.GetAllAsync(cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetByIdAsync(
+        [FromRoute] Guid id, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Fetching doctor with ID {DoctorId}", id);
+
+        var result = await _doctorService.GetByIdAsync(id, cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+    }
+
+    [HttpGet("available")]
+    public async Task<IActionResult> GetAvailableDoctorsAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Fetching all available doctors");
+
+        var result = await _doctorService.GetAvailableDoctorsAsync(cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+    }
+
+    [HttpPost("")]
+    public async Task<IActionResult> CreateAsync(
+        [FromBody] CreateDoctorRequest request, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Creating a new doctor for user {UserId}", request.UserId);
+
+        var result = await _doctorService.CreateAsync(request, cancellationToken);
+
+        return result.IsSuccess ? Ok() : result.ToProblem();
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> UpdateAsync(
+        [FromRoute] Guid id,
+        [FromBody] UpdateDoctorRequest request,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Updating doctor with ID {DoctorId}", id);
+
+        var result = await _doctorService.UpdateAsync(id, request, cancellationToken);
+
+        return result.IsSuccess ? Ok() : result.ToProblem();
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> DeleteAsync(
+        [FromRoute] Guid id, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Deleting doctor with ID {DoctorId}", id);
+
+        var result = await _doctorService.DeleteAsync(id, cancellationToken);
+
+        return result.IsSuccess ? Ok() : result.ToProblem();
+    }
+}

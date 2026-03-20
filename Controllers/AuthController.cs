@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using EduBridge.Services.Interfaces;
 using EduBridge.Abstractions;
 
-namespace EduBridge.API.Controllers;
+namespace EduBridge.Controllers;
 
 [Route("[controller]")]
 [ApiController]
