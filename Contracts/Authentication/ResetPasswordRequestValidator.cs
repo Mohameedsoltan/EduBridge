@@ -10,7 +10,7 @@ public class ResetPasswordRequestValidator : AbstractValidator<ResetPasswordRequ
             .NotEmpty().WithMessage("Email is required")
             .EmailAddress().WithMessage("Invalid email format");
 
-        RuleFor(x => x.Token)
+        RuleFor(x => x.Code)
             .NotEmpty().WithMessage("Token is required");
 
         RuleFor(x => x.NewPassword)

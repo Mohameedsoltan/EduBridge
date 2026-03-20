@@ -19,5 +19,5 @@ public interface IAuthService
 
     Task<Result> SendResetPasswordCodeAsync(string email);
 
-    Task<Result> ResetPasswordAsync(ResetPasswordRequest request);
+    Task<Result> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken cancellationToken = default);
 }
