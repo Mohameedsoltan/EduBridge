@@ -1,8 +1,10 @@
+using Microsoft.EntityFrameworkCore;
+
 namespace EduBridge.Entities;
 
+[Owned]
 public class RefreshToken
 {
-    public int Id { get; set; }
     public string Token { get; set; } = string.Empty;
     public DateTime ExpiresOn { get; set; }
     public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
@@ -10,8 +12,4 @@ public class RefreshToken
 
     public bool IsExpired => DateTime.UtcNow >= ExpiresOn;
     public bool IsActive => RevokedOn is null && !IsExpired;
-
-    
-    public string UserId { get; set; } = string.Empty;
-    public ApplicationUser User { get; set; } = null!;
 }

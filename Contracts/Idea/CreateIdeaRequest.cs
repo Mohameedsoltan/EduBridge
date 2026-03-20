@@ -1,6 +1,7 @@
 namespace EduBridge.Contracts.Idea;
 
 public record CreateIdeaRequest(
+    Guid TeamId,      
     string Title,
     string Description,
     string? RepositoryUrl,
