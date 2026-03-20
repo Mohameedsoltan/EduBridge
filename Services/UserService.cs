@@ -1,269 +1,263 @@
-﻿// using EduBridge.Abstractions;
-// using EduBridge.Contracts.User;
-// using EduBridge.Entities;
-// using EduBridge.Errors;
-// using EduBridge.Persistence;
-// using Microsoft.AspNetCore.Identity;
-// using Microsoft.EntityFrameworkCore;
+﻿using EduBridge.Abstractions;
+using EduBridge.Contracts.User;
+using EduBridge.Entities;
+using EduBridge.Errors;
+using EduBridge.Persistence;
+using EduBridge.Services.Interfaces;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
-// public class UserService(
-//     UserManager<ApplicationUser> userManager,
-//     ApplicationDbContext context) : IUserService
-// {
-//     // Queries
-//     public async Task<Result<UserProfileResponse>> GetCurrentUserAsync(
-//         string userId, CancellationToken cancellationToken = default)
-//     {
-//         var user = await userManager.Users
-//             .Include(u => u.Skills)
-//             .ThenInclude(us => us.Skill)
-//             .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+namespace EduBridge.Services;
 
-//         if (user is null)
-//             return Result.Failure<UserProfileResponse>(UserErrors.UserNotFound);
+public class UserService(
+    UserManager<ApplicationUser> userManager,
+    ApplicationDbContext context) : IUserService
+{
+    public async Task<Result<UserProfileResponse>> GetCurrentUserAsync(
+        string userId, CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.Users
+            .AsNoTracking()
+            .Include(u => u.Skills).ThenInclude(us => us.Skill)
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
 
-//         return Result.Success(new UserProfileResponse(
-//             user.FirstName,
-//             user.LastName,
-//             user.Bio,
-//             user.Major,
-//             user.University,
-//             user.ProfileImageUrl,
-//             user.Skills.Select(s => s.Skill.Name)
-//         ));
-//     }
+        if (user is null)
+            return Result.Failure<UserProfileResponse>(UserErrors.UserNotFound);
 
-//     public async Task<Result<UserResponse>> GetUserByIdAsync(
-//         string userId, CancellationToken cancellationToken = default)
-//     {
-//         var user = await userManager.FindByIdAsync(userId);
+        return Result.Success(new UserProfileResponse(
+            user.FirstName,
+            user.LastName,
+            user.Bio,
+            user.Major,
+            user.University,
+            user.ProfileImageUrl,
+            user.Skills.Select(s => s.Skill.Name)
+        ));
+    }
 
-//         if (user is null)
-//             return Result.Failure<UserResponse>(UserErrors.UserNotFound);
+    public async Task<Result<UserResponse>> GetUserByIdAsync(
+        string userId, CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.FindByIdAsync(userId);
 
-//         var roles = await userManager.GetRolesAsync(user);
+        if (user is null)
+            return Result.Failure<UserResponse>(UserErrors.UserNotFound);
 
-//         return Result.Success(new UserResponse(
-//             user.Id,
-//             user.FirstName,
-//             user.LastName,
-//             user.Email!,
-//             roles.FirstOrDefault() ?? string.Empty,
-//             user.ProfileImageUrl,
-//             user.CreatedAt
-//         ));
-//     }
+        var roles = await userManager.GetRolesAsync(user);
 
-//     public async Task<Result<IEnumerable<UserResponse>>> GetAllUsersAsync(
-//         CancellationToken cancellationToken = default)
-//     {
-//         var users = await userManager.Users
-//             .ToListAsync(cancellationToken);
+        return Result.Success(new UserResponse(
+            user.Id,
+            user.FirstName,
+            user.LastName,
+            user.Email!,
+            roles.FirstOrDefault() ?? string.Empty,
+            user.ProfileImageUrl,
+            user.CreatedAt
+        ));
+    }
 
-//         var response = new List<UserResponse>();
+    public async Task<Result<IEnumerable<UserResponse>>> GetAllUsersAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var users = await userManager.Users
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
 
-//         foreach (var user in users)
-//         {
-//             var roles = await userManager.GetRolesAsync(user);
-//             response.Add(new UserResponse(
-//                 user.Id,
-//                 user.FirstName,
-//                 user.LastName,
-//                 user.Email!,
-//                 roles.FirstOrDefault() ?? string.Empty,
-//                 user.ProfileImageUrl,
-//                 user.CreatedAt
-//             ));
-//         }
+        var response = new List<UserResponse>();
 
-//         return Result.Success<IEnumerable<UserResponse>>(response);
-//     }
+        foreach (var user in users)
+        {
+            var roles = await userManager.GetRolesAsync(user);
+            response.Add(new UserResponse(
+                user.Id,
+                user.FirstName,
+                user.LastName,
+                user.Email!,
+                roles.FirstOrDefault() ?? string.Empty,
+                user.ProfileImageUrl,
+                user.CreatedAt
+            ));
+        }
 
-//     // Profile operations
-//     public async Task<Result<UserProfileResponse>> UpdateProfileAsync(
-//         string userId, UpdateUserRequest request, CancellationToken cancellationToken = default)
-//     {
-//         var user = await userManager.FindByIdAsync(userId);
+        return Result.Success<IEnumerable<UserResponse>>(response);
+    }
 
-//         if (user is null)
-//             return Result.Failure<UserProfileResponse>(UserErrors.UserNotFound);
+    public async Task<Result<UserProfileResponse>> UpdateProfileAsync(
+        string userId, UpdateUserRequest request, CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.FindByIdAsync(userId);
 
-//         user.FirstName = request.FirstName ?? user.FirstName;
-//         user.LastName = request.LastName ?? user.LastName;
-//         user.Bio = request.Bio ?? user.Bio;
-//         user.Major = request.Major ?? user.Major;
-//         user.University = request.University ?? user.University;
+        if (user is null)
+            return Result.Failure<UserProfileResponse>(UserErrors.UserNotFound);
 
-//         var result = await userManager.UpdateAsync(user);
+        if (request.FirstName is not null) user.FirstName = request.FirstName;
+        if (request.LastName is not null) user.LastName = request.LastName;
+        if (request.Bio is not null) user.Bio = request.Bio;
+        if (request.Major is not null) user.Major = request.Major;
+        if (request.University is not null) user.University = request.University;
 
-//         if (!result.Succeeded)
-//         {
-//             var error = result.Errors.First();
-//             return Result.Failure<UserProfileResponse>(
-//                 new Error(error.Code, error.Description, StatusCodes.Status400BadRequest));
-//         }
+        var result = await userManager.UpdateAsync(user);
 
-//         return await GetCurrentUserAsync(userId, cancellationToken);
-//     }
+        if (!result.Succeeded)
+        {
+            var error = result.Errors.First();
+            return Result.Failure<UserProfileResponse>(
+                new Error(error.Code, error.Description, StatusCodes.Status400BadRequest));
+        }
 
-//     public async Task<Result> UploadProfileImageAsync(
-//         string userId, IFormFile image, CancellationToken cancellationToken = default)
-//     {
-//         var user = await userManager.FindByIdAsync(userId);
+        return await GetCurrentUserAsync(userId, cancellationToken);
+    }
 
-//         if (user is null)
-//             return Result.Failure(UserErrors.UserNotFound);
+    public async Task<Result> UploadProfileImageAsync(
+        string userId, IFormFile image, CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.FindByIdAsync(userId);
 
-//         var imageUrl = await SaveImageAsync(image);
+        if (user is null)
+            return Result.Failure(UserErrors.UserNotFound);
 
-//         user.ProfileImageUrl = imageUrl;
+        if (image.Length == 0)
+            return Result.Failure(UserErrors.InvalidImage);
 
-//         await userManager.UpdateAsync(user);
+        var uploadsFolder = Path.Combine("wwwroot", "images", "profiles");
+        Directory.CreateDirectory(uploadsFolder);
 
-//         return Result.Success();
-//     }
+        var fileName = $"{userId}_{Guid.NewGuid()}{Path.GetExtension(image.FileName)}";
+        var filePath = Path.Combine(uploadsFolder, fileName);
 
-//     public async Task<Result> ChangePasswordAsync(
-//         string userId, ChangePasswordRequest request, CancellationToken cancellationToken = default)
-//     {
-//         var user = await userManager.FindByIdAsync(userId);
+        await using var stream = new FileStream(filePath, FileMode.Create);
+        await image.CopyToAsync(stream, cancellationToken);
 
-//         if (user is null)
-//             return Result.Failure(UserErrors.UserNotFound);
+        user.ProfileImageUrl = $"/images/profiles/{fileName}";
 
-//         if (request.NewPassword != request.ConfirmNewPassword)
-//             return Result.Failure(UserErrors.PasswordMismatch);
+        await userManager.UpdateAsync(user);
 
-//         var result = await userManager.ChangePasswordAsync(
-//             user, request.CurrentPassword, request.NewPassword);
+        return Result.Success();
+    }
 
-//         if (!result.Succeeded)
-//         {
-//             var error = result.Errors.First();
-//             return Result.Failure(
-//                 new Error(error.Code, error.Description, StatusCodes.Status400BadRequest));
-//         }
+    public async Task<Result> ChangePasswordAsync(
+        string userId, ChangePasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.FindByIdAsync(userId);
 
-//         return Result.Success();
-//     }
+        if (user is null)
+            return Result.Failure(UserErrors.UserNotFound);
 
-//     // Skill operations
-//     public async Task<Result<IEnumerable<SkillResponse>>> GetUserSkillsAsync(
-//         string userId, CancellationToken cancellationToken = default)
-//     {
-//         var user = await userManager.Users
-//             .Include(u => u.Skills)
-//             .ThenInclude(us => us.Skill)
-//             .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        var result = await userManager.ChangePasswordAsync(
+            user, request.CurrentPassword, request.NewPassword);
 
-//         if (user is null)
-//             return Result.Failure<IEnumerable<SkillResponse>>(UserErrors.UserNotFound);
+        if (!result.Succeeded)
+        {
+            var error = result.Errors.First();
+            return Result.Failure(
+                new Error(error.Code, error.Description, StatusCodes.Status400BadRequest));
+        }
 
-//         var skills = user.Skills
-//             .Select(us => new SkillResponse(us.Skill.Id, us.Skill.Name));
+        return Result.Success();
+    }
 
-//         return Result.Success(skills);
-//     }
+    public async Task<Result<IEnumerable<SkillResponse>>> GetUserSkillsAsync(
+        string userId, CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.Users
+            .AsNoTracking()
+            .Include(u => u.Skills).ThenInclude(us => us.Skill)
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
 
-//     public async Task<Result> AddSkillsAsync(
-//         string userId, List<string> skillNames, CancellationToken cancellationToken = default)
-//     {
-//         var user = await userManager.Users
-//             .Include(u => u.Skills)
-//             .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        if (user is null)
+            return Result.Failure<IEnumerable<SkillResponse>>(UserErrors.UserNotFound);
 
-//         if (user is null)
-//             return Result.Failure(UserErrors.UserNotFound);
+        var skills = user.Skills.Select(us => new SkillResponse(us.Skill.Id, us.Skill.Name));
 
-//         foreach (var skillName in skillNames)
-//         {
-//             var skill = await context.Skills
-//                 .FirstOrDefaultAsync(s => s.Name == skillName, cancellationToken)
-//                 ?? new Skill { Name = skillName };
+        return Result.Success(skills);
+    }
 
-//             if (skill.Id == Guid.Empty)
-//                 await context.Skills.AddAsync(skill, cancellationToken);
+    public async Task<Result> AddSkillsAsync(
+        string userId, List<string> skillNames, CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.Users
+            .Include(u => u.Skills)
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
 
-//             if (!user.Skills.Any(us => us.SkillId == skill.Id))
-//             {
-//                 user.Skills.Add(new UserSkill
-//                 {
-//                     UserId = userId,
-//                     SkillId = skill.Id
-//                 });
-//             }
-//         }
+        if (user is null)
+            return Result.Failure(UserErrors.UserNotFound);
 
-//         await context.SaveChangesAsync(cancellationToken);
+        foreach (var normalized in skillNames.Select(skillName => skillName.Trim().ToLowerInvariant()))
+        {
+            var skill = await context.Skills
+                .FirstOrDefaultAsync(s => s.Name == normalized, cancellationToken);
 
-//         return Result.Success();
-//     }
+            if (skill is null)
+            {
+                skill = new Skill { Name = normalized };
+                await context.Skills.AddAsync(skill, cancellationToken);
+                await context.SaveChangesAsync(cancellationToken); // save first to get the ID
+            }
 
-//     public async Task<Result> RemoveSkillAsync(
-//         string userId, Guid skillId, CancellationToken cancellationToken = default)
-//     {
-//         var userSkill = await context.UserSkills
-//             .FirstOrDefaultAsync(us => us.UserId == userId 
-//                 && us.SkillId == skillId, cancellationToken);
+            if (user.Skills.All(us => us.SkillId != skill.Id))
+                user.Skills.Add(new UserSkill { UserId = userId, SkillId = skill.Id });
+        }
 
-//         if (userSkill is null)
-//             return Result.Failure(UserErrors.SkillNotFound);
+        await context.SaveChangesAsync(cancellationToken);
 
-//         context.UserSkills.Remove(userSkill);
-//         await context.SaveChangesAsync(cancellationToken);
+        return Result.Success();
+    }
 
-//         return Result.Success();
-//     }
+    public async Task<Result> RemoveSkillAsync(
+        string userId, Guid skillId, CancellationToken cancellationToken = default)
+    {
+        var userSkill = await context.UserSkills
+            .FirstOrDefaultAsync(us => us.UserId == userId && us.SkillId == skillId, cancellationToken);
 
-//     public async Task<Result> ClearSkillsAsync(
-//         string userId, CancellationToken cancellationToken = default)
-//     {
-//         var userSkills = await context.UserSkills
-//             .Where(us => us.UserId == userId)
-//             .ToListAsync(cancellationToken);
+        if (userSkill is null)
+            return Result.Failure(UserErrors.SkillNotFound);
 
-//         context.UserSkills.RemoveRange(userSkills);
-//         await context.SaveChangesAsync(cancellationToken);
+        context.UserSkills.Remove(userSkill);
+        await context.SaveChangesAsync(cancellationToken);
 
-//         return Result.Success();
-//     }
+        return Result.Success();
+    }
 
-//     // Admin operations
-//     public async Task<Result> AddAsync(
-//         CreateUserRequest request, CancellationToken cancellationToken = default)
-//     {
-//         var existingUser = await userManager.FindByEmailAsync(request.Email);
+    public async Task<Result> ClearSkillsAsync(
+        string userId, CancellationToken cancellationToken = default)
+    {
+        await context.UserSkills
+            .Where(us => us.UserId == userId)
+            .ExecuteDeleteAsync(cancellationToken);
 
-//         if (existingUser is not null)
-//             return Result.Failure(UserErrors.DuplicateEmail);
+        return Result.Success();
+    }
 
-//         var user = new ApplicationUser
-//         {
-//             FirstName = request.FirstName,
-//             LastName = request.LastName,
-//             Email = request.Email,
-//             UserName = request.Email,
-//             Bio = request.Bio,
-//             Major = request.Major,
-//             University = request.University
-//         };
+    public async Task<Result> AddAsync(
+        CreateUserRequest request, CancellationToken cancellationToken = default)
+    {
+        var existingUser = await userManager.FindByEmailAsync(request.Email);
 
-//         var result = await userManager.CreateAsync(user, request.Password);
+        if (existingUser is not null)
+            return Result.Failure(UserErrors.DuplicateEmail);
 
-//         if (!result.Succeeded)
-//         {
-//             var error = result.Errors.First();
-//             return Result.Failure(
-//                 new Error(error.Code, error.Description, StatusCodes.Status400BadRequest));
-//         }
+        var user = new ApplicationUser
+        {
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            Email = request.Email,
+            UserName = request.Email,
+            Bio = request.Bio,
+            Major = request.Major,
+            University = request.University
+        };
 
-//         await userManager.AddToRoleAsync(user, request.Role);
+        var result = await userManager.CreateAsync(user, request.Password);
 
-//         return Result.Success();
-//     }
+        if (!result.Succeeded)
+        {
+            var error = result.Errors.First();
+            return Result.Failure(
+                new Error(error.Code, error.Description, StatusCodes.Status400BadRequest));
+        }
 
-//     private async Task<string> SaveImageAsync(IFormFile image)
-//     {
-//         throw new NotImplementedException();
-//     }
-// }
+        await userManager.AddToRoleAsync(user, request.Role);
+
+        return Result.Success();
+    }
+}

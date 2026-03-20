@@ -1,231 +1,204 @@
-// using System.Security.Claims;
-// using EduBridge.Abstractions;
-// using EduBridge.Abstractions.Consts;
-// using EduBridge.Contracts.Skills;
-// using EduBridge.Entities;
-// using EduBridge.Persistence;
-// using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using EduBridge.Abstractions;
+using EduBridge.Abstractions.Consts;
+using EduBridge.Contracts.Skills;
+using EduBridge.Entities;
+using EduBridge.Errors;
+using EduBridge.Persistence;
+using EduBridge.Services.Interfaces;
+using MapsterMapper;
+using Microsoft.EntityFrameworkCore;
 
-// namespace EduBridge.Services.Interfaces;
+namespace EduBridge.Services;
 
-// public class JoinRequestService(
-//     ApplicationDbContext context,
-//     INotificationService notificationService,
-//     IHttpContextAccessor httpContextAccessor) : IJoinRequestService
-// {
-//     private string CurrentUserId => httpContextAccessor.HttpContext!.User
-//         .FindFirstValue(ClaimTypes.NameIdentifier)!;
+public class JoinRequestService(
+    ApplicationDbContext context,
+    INotificationService notificationService,
+    IHttpContextAccessor httpContextAccessor,
+    IMapper mapper) : IJoinRequestService
+{
+    private string CurrentUserId => httpContextAccessor.HttpContext!.User
+        .FindFirstValue(ClaimTypes.NameIdentifier)!;
 
-//     // Queries
-//     public async Task<Result<IEnumerable<JoinRequestResponse>>> GetIncomingRequestsAsync(
-//         Guid teamId, CancellationToken cancellationToken = default)
-//     {
-//         var team = await context.Teams
-//             .FirstOrDefaultAsync(t => t.Id == teamId, cancellationToken);
+    public async Task<Result<IEnumerable<JoinRequestResponse>>> GetIncomingRequestsAsync(
+        Guid teamId, CancellationToken cancellationToken = default)
+    {
+        var team = await context.Teams
+            .FirstOrDefaultAsync(t => t.Id == teamId, cancellationToken);
 
-//         if (team is null)
-//             return Result.Failure<IEnumerable<JoinRequestResponse>>(TeamErrors.TeamNotFound);
+        if (team is null)
+            return Result.Failure<IEnumerable<JoinRequestResponse>>(TeamErrors.TeamNotFound);
 
-//         if (team.LeaderId != CurrentUserId)
-//             return Result.Failure<IEnumerable<JoinRequestResponse>>(TeamErrors.NotTeamLeader);
+        if (team.LeaderId != CurrentUserId)
+            return Result.Failure<IEnumerable<JoinRequestResponse>>(TeamErrors.NotTeamLeader);
 
-//         var requests = await context.JoinRequests
-//             .Include(jr => jr.Student)
-//             .Where(jr => jr.TeamId == teamId)
-//             .ToListAsync(cancellationToken);
+        var requests = await context.JoinRequests
+            .AsNoTracking()
+            .Include(jr => jr.Team)
+            .Include(jr => jr.Student)
+            .Where(jr => jr.TeamId == teamId)
+            .ToListAsync(cancellationToken);
 
-//         var response = requests.Select(jr => new JoinRequestResponse(
-//             jr.Id,
-//             jr.TeamId,
-//             team.Name,
-//             $"{jr.Student.FirstName} {jr.Student.LastName}",
-//             jr.Status,
-//             jr.Message,
-//             jr.ResponseMessage,
-//             jr.CreatedOn,
-//             jr.RespondedAt
-//         ));
+        return Result.Success(mapper.Map<IEnumerable<JoinRequestResponse>>(requests));
+    }
 
-//         return Result.Success(response);
-//     }
+    public async Task<Result<IEnumerable<JoinRequestResponse>>> GetUserRequestsAsync(
+        string studentId, CancellationToken cancellationToken = default)
+    {
+        var requests = await context.JoinRequests
+            .AsNoTracking()
+            .Include(jr => jr.Team)
+            .Include(jr => jr.Student)
+            .Where(jr => jr.StudentId == studentId)
+            .ToListAsync(cancellationToken);
 
-//     public async Task<Result<IEnumerable<JoinRequestResponse>>> GetUserRequestsAsync(
-//         string studentId, CancellationToken cancellationToken = default)
-//     {
-//         var requests = await context.JoinRequests
-//             .Include(jr => jr.Team)
-//             .Include(jr => jr.Student)
-//             .Where(jr => jr.StudentId == studentId)
-//             .ToListAsync(cancellationToken);
+        return Result.Success(mapper.Map<IEnumerable<JoinRequestResponse>>(requests));
+    }
 
-//         var response = requests.Select(jr => new JoinRequestResponse(
-//             jr.Id,
-//             jr.TeamId,
-//             jr.Team.Name,
-//             $"{jr.Student.FirstName} {jr.Student.LastName}",
-//             jr.Status,
-//             jr.Message,
-//             jr.ResponseMessage,
-//             jr.CreatedOn,
-//             jr.RespondedAt
-//         ));
+    public async Task<Result> SendAsync(
+        Guid teamId, CancellationToken cancellationToken = default)
+    {
+        var team = await context.Teams
+            .Include(t => t.Members)
+            .FirstOrDefaultAsync(t => t.Id == teamId, cancellationToken);
 
-//         return Result.Success(response);
-//     }
+        if (team is null)
+            return Result.Failure(TeamErrors.TeamNotFound);
 
-//     // Student operations
-//     public async Task<Result> SendAsync(
-//         Guid teamId, CancellationToken cancellationToken = default)
-//     {
-//         var team = await context.Teams
-//             .Include(t => t.Members)
-//             .FirstOrDefaultAsync(t => t.Id == teamId, cancellationToken);
+        if (team.Members.Any(m => m.UserId == CurrentUserId))
+            return Result.Failure(JoinRequestErrors.AlreadyMember);
 
-//         if (team is null)
-//             return Result.Failure(TeamErrors.TeamNotFound);
+        if (team.Status == TeamStatus.Full)
+            return Result.Failure(TeamErrors.TeamFull);
 
-//         if (team.Members.Any(m => m.UserId == CurrentUserId))
-//             return Result.Failure(JoinRequestErrors.AlreadyMember);
+        var existingRequest = await context.JoinRequests
+            .AnyAsync(jr => jr.TeamId == teamId
+                && jr.StudentId == CurrentUserId
+                && jr.Status == RequestStatus.Pending, cancellationToken);
 
-//         if (team.Status == TeamStatus.Full)
-//             return Result.Failure(TeamErrors.TeamFull);
+        if (existingRequest)
+            return Result.Failure(JoinRequestErrors.RequestAlreadyExists);
 
-//         var existingRequest = await context.JoinRequests
-//             .FirstOrDefaultAsync(jr => jr.TeamId == teamId
-//                 && jr.StudentId == CurrentUserId
-//                 && jr.Status == RequestStatus.Pending, cancellationToken);
+        var request = new JoinRequest
+        {
+            TeamId = teamId,
+            StudentId = CurrentUserId,
+            Status = RequestStatus.Pending
+        };
 
-//         if (existingRequest is not null)
-//             return Result.Failure(JoinRequestErrors.RequestAlreadyExists);
+        await context.JoinRequests.AddAsync(request, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
 
-//         var request = new JoinRequest
-//         {
-//             TeamId = teamId,
-//             StudentId = CurrentUserId,
-//             Status = RequestStatus.Pending
-//         };
+        await notificationService.SendAsync(
+            team.LeaderId,
+            NotificationType.JoinRequestReceived,
+            $"New join request for team {team.Name}",
+            request.Id,
+            cancellationToken);
 
-//         await context.JoinRequests.AddAsync(request, cancellationToken);
-//         await context.SaveChangesAsync(cancellationToken);
+        return Result.Success();
+    }
 
-//         // Notify team leader
-//         await notificationService.SendAsync(
-//             team.LeaderId,
-//             NotificationType.JoinRequestReceived,
-//             $"New join request for team {team.Name}",
-//             request.Id,
-//             cancellationToken);
+    public async Task<Result> CancelAsync(
+        Guid id, CancellationToken cancellationToken = default)
+    {
+        var request = await context.JoinRequests
+            .FirstOrDefaultAsync(jr => jr.Id == id, cancellationToken);
 
-//         return Result.Success();
-//     }
+        if (request is null)
+            return Result.Failure(JoinRequestErrors.RequestNotFound);
 
-//     public async Task<Result> CancelAsync(
-//         Guid id, CancellationToken cancellationToken = default)
-//     {
-//         var request = await context.JoinRequests
-//             .FirstOrDefaultAsync(jr => jr.Id == id, cancellationToken);
+        if (request.StudentId != CurrentUserId)
+            return Result.Failure(JoinRequestErrors.NotRequestOwner);
 
-//         if (request is null)
-//             return Result.Failure(JoinRequestErrors.RequestNotFound);
+        if (request.Status != RequestStatus.Pending)
+            return Result.Failure(JoinRequestErrors.RequestNotPending);
 
-//         if (request.StudentId != CurrentUserId)
-//             return Result.Failure(JoinRequestErrors.NotRequestOwner);
+        request.Status = RequestStatus.Cancelled;
 
-//         if (request.Status != RequestStatus.Pending)
-//             return Result.Failure(JoinRequestErrors.RequestNotPending);
+        await context.SaveChangesAsync(cancellationToken);
 
-//         request.Status = RequestStatus.Cancelled;
+        return Result.Success();
+    }
 
-//         await context.SaveChangesAsync(cancellationToken);
+    public async Task<Result> ApproveAsync(
+        Guid id, string? responseMessage, CancellationToken cancellationToken = default)
+    {
+        var request = await context.JoinRequests
+            .Include(jr => jr.Team).ThenInclude(t => t.Members)
+            .FirstOrDefaultAsync(jr => jr.Id == id, cancellationToken);
 
-//         return Result.Success();
-//     }
+        if (request is null)
+            return Result.Failure(JoinRequestErrors.RequestNotFound);
 
-//     // Leader operations
-//     public async Task<Result> ApproveAsync(
-//         Guid id, string? responseMessage, CancellationToken cancellationToken = default)
-//     {
-//         var request = await context.JoinRequests
-//             .Include(jr => jr.Team)
-//             .ThenInclude(t => t.Members)
-//             .FirstOrDefaultAsync(jr => jr.Id == id, cancellationToken);
+        if (request.Team.LeaderId != CurrentUserId)
+            return Result.Failure(TeamErrors.NotTeamLeader);
 
-//         if (request is null)
-//             return Result.Failure(JoinRequestErrors.RequestNotFound);
+        if (request.Status != RequestStatus.Pending)
+            return Result.Failure(JoinRequestErrors.RequestNotPending);
 
-//         if (request.Team.LeaderId != CurrentUserId)
-//             return Result.Failure(TeamErrors.NotTeamLeader);
+        if (request.Team.Members.Count >= request.Team.MaxMembers)
+            return Result.Failure(TeamErrors.TeamFull);
 
-//         if (request.Status != RequestStatus.Pending)
-//             return Result.Failure(JoinRequestErrors.RequestNotPending);
+        request.Status = RequestStatus.Approved;
+        request.ResponseMessage = responseMessage;
+        request.RespondedById = CurrentUserId;
+        request.RespondedAt = DateTime.UtcNow;
 
-//         if (request.Team.Members.Count >= request.Team.MaxMembers)
-//             return Result.Failure(TeamErrors.TeamFull);
+        await context.TeamMembers.AddAsync(new TeamMember
+        {
+            TeamId = request.TeamId,
+            UserId = request.StudentId,
+            Role = MemberRole.Member,
+            JoinedAt = DateTime.UtcNow
+        }, cancellationToken);
 
-//         request.Status = RequestStatus.Approved;
-//         request.ResponseMessage = responseMessage;
-//         request.RespondedById = CurrentUserId;
-//         request.RespondedAt = DateTime.UtcNow;
+        request.Team.Status = request.Team.Members.Count + 1 >= request.Team.MaxMembers
+            ? TeamStatus.Full
+            : TeamStatus.Partial;
 
-//         // Add student to team
-//         await context.TeamMembers.AddAsync(new TeamMember
-//         {
-//             TeamId = request.TeamId,
-//             UserId = request.StudentId,
-//             Role = MemberRole.Member,
-//             JoinedAt = DateTime.UtcNow
-//         }, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
 
-//         // Update team status
-//         if (request.Team.Members.Count + 1 >= request.Team.MaxMembers)
-//             request.Team.Status = TeamStatus.Full;
-//         else
-//             request.Team.Status = TeamStatus.Partial;
+        await notificationService.SendAsync(
+            request.StudentId,
+            NotificationType.JoinRequestAccepted,
+            $"Your request to join {request.Team.Name} has been accepted",
+            request.Id,
+            cancellationToken);
 
-//         await context.SaveChangesAsync(cancellationToken);
+        return Result.Success();
+    }
 
-//         // Notify student
-//         await notificationService.SendAsync(
-//             request.StudentId,
-//             NotificationType.JoinRequestAccepted,
-//             $"Your request to join {request.Team.Name} has been accepted",
-//             request.Id,
-//             cancellationToken);
+    public async Task<Result> RejectAsync(
+        Guid id, string? responseMessage, CancellationToken cancellationToken = default)
+    {
+        var request = await context.JoinRequests
+            .Include(jr => jr.Team)
+            .FirstOrDefaultAsync(jr => jr.Id == id, cancellationToken);
 
-//         return Result.Success();
-//     }
+        if (request is null)
+            return Result.Failure(JoinRequestErrors.RequestNotFound);
 
-//     public async Task<Result> RejectAsync(
-//         Guid id, string? responseMessage, CancellationToken cancellationToken = default)
-//     {
-//         var request = await context.JoinRequests
-//             .Include(jr => jr.Team)
-//             .FirstOrDefaultAsync(jr => jr.Id == id, cancellationToken);
+        if (request.Team.LeaderId != CurrentUserId)
+            return Result.Failure(TeamErrors.NotTeamLeader);
 
-//         if (request is null)
-//             return Result.Failure(JoinRequestErrors.RequestNotFound);
+        if (request.Status != RequestStatus.Pending)
+            return Result.Failure(JoinRequestErrors.RequestNotPending);
 
-//         if (request.Team.LeaderId != CurrentUserId)
-//             return Result.Failure(TeamErrors.NotTeamLeader);
+        request.Status = RequestStatus.Rejected;
+        request.ResponseMessage = responseMessage;
+        request.RespondedById = CurrentUserId;
+        request.RespondedAt = DateTime.UtcNow;
 
-//         if (request.Status != RequestStatus.Pending)
-//             return Result.Failure(JoinRequestErrors.RequestNotPending);
+        await context.SaveChangesAsync(cancellationToken);
 
-//         request.Status = RequestStatus.Rejected;
-//         request.ResponseMessage = responseMessage;
-//         request.RespondedById = CurrentUserId;
-//         request.RespondedAt = DateTime.UtcNow;
+        await notificationService.SendAsync(
+            request.StudentId,
+            NotificationType.JoinRequestRejected,
+            $"Your request to join {request.Team.Name} has been rejected",
+            request.Id,
+            cancellationToken);
 
-//         await context.SaveChangesAsync(cancellationToken);
-
-//         // Notify student
-//         await notificationService.SendAsync(
-//             request.StudentId,
-//             NotificationType.JoinRequestRejected,
-//             $"Your request to join {request.Team.Name} has been rejected",
-//             request.Id,
-//             cancellationToken);
-
-//         return Result.Success();
-//     }
-// }
+        return Result.Success();
+    }
+}

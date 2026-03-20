@@ -1,7 +1,7 @@
 using EduBridge.Abstractions;
 using EduBridge.Contracts.Doctor;
 
-namespace EduBridge.Abstractions.Services;
+namespace EduBridge.Services.Interfaces;
 
 public interface IDoctorService
 {

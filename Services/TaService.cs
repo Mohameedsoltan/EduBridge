@@ -1,100 +1,85 @@
-// using EduBridge.Abstractions;
-// using EduBridge.Contracts.TA;
-// using EduBridge.Contracts.Team;
-// using EduBridge.Persistence;
-// using EduBridge.Services.Interfaces;
-// using Microsoft.EntityFrameworkCore;
+using EduBridge.Abstractions;
+using EduBridge.Contracts.TA;
+using EduBridge.Contracts.Team;
+using EduBridge.Entities;
+using EduBridge.Errors;
+using EduBridge.Persistence;
+using EduBridge.Services.Interfaces;
+using MapsterMapper;
+using Microsoft.EntityFrameworkCore;
 
-// namespace EduBridge.Services;
+namespace EduBridge.Services;
 
-// public class TaService(
-//     ApplicationDbContext context,
-//     IRatingService ratingService) : ITaService
-// {
-//     public async Task<Result<IEnumerable<TAResponse>>> GetAllTAsAsync(
-//         CancellationToken cancellationToken = default)
-//     {
-//         var tas = await context.TeachingAssistants
-//             .Include(ta => ta.User)
-//             .ToListAsync(cancellationToken);
+public class TaService(
+    ApplicationDbContext context,
+    IRatingService ratingService,
+    IMapper mapper) : ITaService
+{
+    public async Task<Result<IEnumerable<TAResponse>>> GetAllTAsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var tas = await context.TeachingAssistants
+            .AsNoTracking()
+            .Include(ta => ta.User)
+            .ToListAsync(cancellationToken);
 
-//         var response = new List<TAResponse>();
+        return Result.Success(await MapWithRatingsAsync(tas, cancellationToken));
+    }
 
-//         foreach (var ta in tas)
-//         {
-//             var avgRating = await ratingService.GetAverageAsync(ta.Id, cancellationToken);
-//             response.Add(new TAResponse(
-//                 ta.UserId,
-//                 ta.User.FirstName,
-//                 ta.User.LastName,
-//                 ta.Department,
-//                 ta.AcademicTitle,
-//                 ta.OfficeLocation,
-//                 ta.MaxSlots,
-//                 ta.AvailableSlots,
-//                 ta.IsAvailable,
-//                 avgRating.IsSuccess ? avgRating.Value : 0
-//             ));
-//         }
+    public async Task<Result<IEnumerable<TAResponse>>> GetAvailableTAsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var tas = await context.TeachingAssistants
+            .AsNoTracking()
+            .Include(ta => ta.User)
+            .Where(ta => ta.AvailableSlots > 0)
+            .ToListAsync(cancellationToken);
 
-//         return Result.Success<IEnumerable<TAResponse>>(response);
-//     }
+        return Result.Success(await MapWithRatingsAsync(tas, cancellationToken));
+    }
 
-//     public async Task<Result<IEnumerable<TAResponse>>> GetAvailableTAsAsync(
-//         CancellationToken cancellationToken = default)
-//     {
-//         var tas = await context.TeachingAssistants
-//             .Include(ta => ta.User)
-//             .Where(ta => ta.AvailableSlots > 0)
-//             .ToListAsync(cancellationToken);
+    public async Task<Result<IEnumerable<TeamResponse>>> GetSupervisedTeamsAsync(
+        string userId, CancellationToken cancellationToken = default)
+    {
+        var ta = await context.TeachingAssistants
+            .FirstOrDefaultAsync(ta => ta.UserId == userId, cancellationToken);
 
-//         var response = new List<TAResponse>();
+        if (ta is null)
+            return Result.Failure<IEnumerable<TeamResponse>>(TaErrors.TaNotFound);
 
-//         foreach (var ta in tas)
-//         {
-//             var avgRating = await ratingService.GetAverageAsync(ta.Id, cancellationToken);
-//             response.Add(new TAResponse(
-//                 ta.UserId,
-//                 ta.User.FirstName,
-//                 ta.User.LastName,
-//                 ta.Department,
-//                 ta.AcademicTitle,
-//                 ta.OfficeLocation,
-//                 ta.MaxSlots,
-//                 ta.AvailableSlots,
-//                 ta.IsAvailable,
-//                 avgRating.IsSuccess ? avgRating.Value : 0
-//             ));
-//         }
+        var teams = await context.Teams
+            .AsNoTracking()
+            .Include(t => t.Members)
+            .Include(t => t.Leader)
+            .Where(t => t.TaId == ta.Id)
+            .ToListAsync(cancellationToken);
 
-//         return Result.Success<IEnumerable<TAResponse>>(response);
-//     }
+        return Result.Success(mapper.Map<IEnumerable<TeamResponse>>(teams));
+    }
 
-//     public async Task<Result<IEnumerable<TeamResponse>>> GetSupervisedTeamsAsync(
-//         string userId, CancellationToken cancellationToken = default)
-//     {
-//         var ta = await context.TeachingAssistants
-//             .FirstOrDefaultAsync(ta => ta.UserId == userId, cancellationToken);
+    private async Task<IEnumerable<TAResponse>> MapWithRatingsAsync(
+        IEnumerable<TeachingAssistant> tas, CancellationToken cancellationToken)
+    {
+        var response = new List<TAResponse>();
 
-//         if (ta is null)
-//             return Result.Failure<IEnumerable<TeamResponse>>(TAErrors.TANotFound);
+        foreach (var ta in tas)
+        {
+            var avgResult = await ratingService.GetAverageAsync(ta.Id, cancellationToken);
 
-//         var teams = await context.Teams
-//             .Include(t => t.Members)
-//             .Where(t => t.TaId == ta.Id)
-//             .ToListAsync(cancellationToken);
+            response.Add(new TAResponse(
+                ta.UserId,
+                ta.User.FirstName,
+                ta.User.LastName,
+                ta.Department,
+                ta.AcademicTitle,
+                ta.OfficeLocation,
+                ta.MaxSlots,
+                ta.AvailableSlots,
+                ta.IsAvailable,
+                avgResult.IsSuccess ? avgResult.Value : 0
+            ));
+        }
 
-//         var response = teams.Select(t => new TeamResponse(
-//             t.Id,
-//             t.Name,
-//             t.Description,
-//             t.LeaderId,
-//             t.MaxMembers,
-//             t.Members.Count,
-//             t.Status,
-//             t.CreatedOn
-//         ));
-
-//         return Result.Success<IEnumerable<TeamResponse>>(response);
-//     }
-// }
+        return response;
+    }
+}

@@ -14,7 +14,7 @@ public class ApplicationDbContext(
     public DbSet<Team> Teams { get; set; } = null!;
     public DbSet<TeamMember> TeamMembers { get; set; } = null!;
     public DbSet<JoinRequest> JoinRequests { get; set; } = null!;
-    public DbSet<TARequest> TaRequests { get; set; } = null!;
+    public DbSet<TaRequest> TaRequests { get; set; } = null!;
     public DbSet<DoctorRequest> DoctorRequests { get; set; } = null!;
     public DbSet<TeachingAssistant> TeachingAssistants { get; set; } = null!;
     public DbSet<Doctor> Doctors { get; set; } = null!;

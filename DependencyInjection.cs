@@ -4,15 +4,14 @@ using EduBridge.Authentication;
 using EduBridge.Abstractions.Consts;
 using EduBridge.Entities;
 using EduBridge.Persistence;
-//using EduBridge .Services;
+using EduBridge.Services;
+using EduBridge.Services.Interfaces;
 using EduBridge.Settings;
 using FluentValidation;
 using Mapster;
 using MapsterMapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SharpGrip.FluentValidation.AutoValidation.Mvc.Extensions;
@@ -21,88 +20,110 @@ namespace EduBridge;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddDependencies(this IServiceCollection services, IConfiguration config)
+    extension(IServiceCollection services)
     {
-        services.AddControllers();
-
-        services.AddAuthConfig(config);
-
-        var connectionString = config.GetConnectionString("DefaultConnection")
-                ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseSqlServer(connectionString));
-
-        services.AddOpenApi();
-
-        services.Configure<MailSettings>(config.GetSection(nameof(MailSettings)));
-       
-        return services;
-    }
-    private static IServiceCollection AddMapsterConfig(this IServiceCollection services)
-    {
-        var mappingConfig = TypeAdapterConfig.GlobalSettings;
-        mappingConfig.Scan(Assembly.GetExecutingAssembly());
-
-        services.AddSingleton<IMapper>(new Mapper(mappingConfig));
-
-        return services;
-    }
-    private static IServiceCollection AddFluentValidationConfig(this IServiceCollection services)
+        public void AddDependencies(IConfiguration config)
         {
-        services.AddFluentValidationAutoValidation()
-        .AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+            services.AddControllers();
+            services.AddServicesConfig();
+            services.AddAuthConfig(config);
+            services.AddMapsterConfig();       
+            services.AddFluentValidationConfig(); 
 
-        return services;
+            var connectionString = config.GetConnectionString("DefaultConnection")
+                                   ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+            services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseSqlServer(connectionString));
+
+            services.AddOpenApi();
+
+            services.Configure<MailSettings>(config.GetSection(nameof(MailSettings)));
+
         }
 
-    private static IServiceCollection AddAuthConfig(this IServiceCollection services,
-        IConfiguration config)
-    {
-        services.AddSingleton<IJwtProvider, JwtProvider>();
-
-        services.AddIdentity<ApplicationUser, ApplicationRole>()
-            .AddEntityFrameworkStores<ApplicationDbContext>()
-            .AddDefaultTokenProviders();
-
-
-        services.AddOptions<JwtOptions>()
-            .BindConfiguration(JwtOptions.SectionName)
-            .ValidateDataAnnotations();
-
-        var jwtSettings = config.GetSection(JwtOptions.SectionName).Get<JwtOptions>();
-
-        services.AddAuthentication(options =>
-    {
-        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    })
-    .AddJwtBearer(o =>
-    {
-        o.SaveToken = true;
-        o.TokenValidationParameters = new TokenValidationParameters
+        private void AddMapsterConfig()
         {
-            ValidateIssuerSigningKey = true,
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings?.Key!)),
-            ValidIssuer = jwtSettings?.Issuer,
-            ValidAudience = jwtSettings?.Audience
-        };
-    });
+            var mappingConfig = TypeAdapterConfig.GlobalSettings;
+            mappingConfig.Scan(Assembly.GetExecutingAssembly());
 
-        services.Configure<IdentityOptions>(options =>
-           {
-               options.Password.RequiredLength = 8;
-               options.SignIn.RequireConfirmedEmail = true;
-               options.User.RequireUniqueEmail = true;
-           });
+            services.AddSingleton<IMapper>(new Mapper(mappingConfig));
 
-        services.AddAuthorization(o =>
-     {
-         o.AddPolicy("ApiAdminPolicy", b => b.RequireRole(DefaultRoles.Admin));
-     });
-        return services;
+        }
+
+        private void AddFluentValidationConfig()
+        {
+            services.AddFluentValidationAutoValidation()
+                .AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+
+        }
+
+        private void AddAuthConfig(IConfiguration config)
+        {
+            services.AddSingleton<IJwtProvider, JwtProvider>();
+
+            services.AddIdentity<ApplicationUser, ApplicationRole>()
+                .AddEntityFrameworkStores<ApplicationDbContext>()
+                .AddDefaultTokenProviders();
+
+
+            services.AddOptions<JwtOptions>()
+                .BindConfiguration(JwtOptions.SectionName)
+                .ValidateDataAnnotations();
+
+            var jwtSettings = config.GetSection(JwtOptions.SectionName).Get<JwtOptions>();
+
+            services.AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                })
+                .AddJwtBearer(o =>
+                {
+                    o.SaveToken = true;
+                    o.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings?.Key!)),
+                        ValidIssuer = jwtSettings?.Issuer,
+                        ValidAudience = jwtSettings?.Audience
+                    };
+                });
+
+            services.Configure<IdentityOptions>(options =>
+            {
+                options.Password.RequiredLength = 8;
+                options.SignIn.RequireConfirmedEmail = true;
+                options.User.RequireUniqueEmail = true;
+            });
+
+            services.AddAuthorization(o =>
+            {
+                o.AddPolicy("ApiAdminPolicy", b => b.RequireRole(DefaultRoles.Admin));
+            });
+        }
+
+        private void AddServicesConfig()
+        {
+            services.AddScoped<ISkillService, SkillService>();
+            services.AddScoped<IIdeaCategoryService, IdeaCategoryService>();
+            services.AddScoped<IIdeaTagService, IdeaTagService>();
+            services.AddScoped<IIdeaService, IdeaService>();
+            services.AddScoped<IDoctorService, DoctorService>();
+            services.AddScoped<IDoctorRequestService, DoctorRequestService>();
+            services.AddScoped<INotificationService, NotificationService>();
+            services.AddScoped<IRatingService, RatingService>();
+            services.AddScoped<IRoleService, RoleService>();
+            services.AddScoped<IJoinRequestService, JoinRequestService>();
+            services.AddScoped<ITaRequestService, TaRequestService>();
+            services.AddScoped<ITaService, TaService>();
+            services.AddScoped<ITeamService, TeamService>();
+            services.AddScoped<IUserService, UserService>();
+            services.AddHttpContextAccessor();
+
+        }
     }
 }

@@ -1,281 +1,257 @@
-// using System.Security.Claims;
-// using EduBridge.Abstractions;
-// using EduBridge.Abstractions.Consts;
-// using EduBridge.Contracts.Team;
-// using EduBridge.Entities;
-// using EduBridge.Persistence;
-// using EduBridge.Services.Interfaces;
-// using Microsoft.EntityFrameworkCore;
-
-// namespace EduBridge.Services;
-
-// public class TeamService(
-//     ApplicationDbContext context,
-//     INotificationService notificationService,
-//     IHttpContextAccessor httpContextAccessor) : ITeamService
-// {
-//     private string CurrentUserId => httpContextAccessor.HttpContext!.User
-//         .FindFirstValue(ClaimTypes.NameIdentifier)!;
-
-//     // Queries
-//     public async Task<Result<TeamResponse>> GetByIdAsync(
-//         Guid id, CancellationToken cancellationToken = default)
-//     {
-//         var team = await context.Teams
-//             .Include(t => t.Members)
-//             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
-
-//         if (team is null)
-//             return Result.Failure<TeamResponse>(TeamErrors.TeamNotFound);
-
-//         return Result.Success(new TeamResponse(
-//             team.Id,
-//             team.Name,
-//             team.Description,
-//             team.LeaderId,
-//             team.MaxMembers,
-//             team.Members.Count,
-//             team.Status,
-//             team.CreatedOn
-//         ));
-//     }
-
-//     public async Task<Result<IEnumerable<TeamResponse>>> GetAllAsync(
-//         CancellationToken cancellationToken = default)
-//     {
-//         var teams = await context.Teams
-//             .Include(t => t.Members)
-//             .ToListAsync(cancellationToken);
-
-//         var response = teams.Select(t => new TeamResponse(
-//             t.Id,
-//             t.Name,
-//             t.Description,
-//             t.LeaderId,
-//             t.MaxMembers,
-//             t.Members.Count,
-//             t.Status,
-//             t.CreatedOn
-//         ));
-
-//         return Result.Success(response);
-//     }
-
-//     // Team management
-//     public async Task<Result<TeamResponse>> CreateAsync(
-//         CreateTeamRequest request, CancellationToken cancellationToken = default)
-//     {
-//         var team = new Team
-//         {
-//             Name = request.Name,
-//             Description = request.Description,
-//             LeaderId = CurrentUserId,
-//             Status = TeamStatus.Open
-//         };
-
-//         await context.Teams.AddAsync(team, cancellationToken);
-
-//         // Add leader as first member
-//         await context.TeamMembers.AddAsync(new TeamMember
-//         {
-//             TeamId = team.Id,
-//             UserId = CurrentUserId,
-//             Role = MemberRole.Leader,
-//             JoinedAt = DateTime.UtcNow
-//         }, cancellationToken);
-
-//         await context.SaveChangesAsync(cancellationToken);
-
-//         return await GetByIdAsync(team.Id, cancellationToken);
-//     }
-
-//     public async Task<Result<TeamResponse>> UpdateAsync(
-//         Guid id, UpdateTeamRequest request, CancellationToken cancellationToken = default)
-//     {
-//         var team = await context.Teams
-//             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
-
-//         if (team is null)
-//             return Result.Failure<TeamResponse>(TeamErrors.TeamNotFound);
-
-//         if (team.LeaderId != CurrentUserId)
-//             return Result.Failure<TeamResponse>(TeamErrors.NotTeamLeader);
+using System.Security.Claims;
+using EduBridge.Abstractions;
+using EduBridge.Abstractions.Consts;
+using EduBridge.Contracts.Team;
+using EduBridge.Entities;
+using EduBridge.Errors;
+using EduBridge.Persistence;
+using EduBridge.Services.Interfaces;
+using MapsterMapper;
+using Microsoft.EntityFrameworkCore;
+
+namespace EduBridge.Services;
+
+public class TeamService(
+    ApplicationDbContext context,
+    INotificationService notificationService,
+    IHttpContextAccessor httpContextAccessor,
+    IMapper mapper) : ITeamService
+{
+    private string CurrentUserId => httpContextAccessor.HttpContext!.User
+        .FindFirstValue(ClaimTypes.NameIdentifier)!;
+
+    public async Task<Result<TeamResponse>> GetByIdAsync(
+        Guid id, CancellationToken cancellationToken = default)
+    {
+        var team = await context.Teams
+            .AsNoTracking()
+            .Include(t => t.Members)
+            .Include(t => t.Leader)
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+
+        if (team is null)
+            return Result.Failure<TeamResponse>(TeamErrors.TeamNotFound);
+
+        return Result.Success(mapper.Map<TeamResponse>(team));
+    }
+
+    public async Task<Result<IEnumerable<TeamResponse>>> GetAllAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var teams = await context.Teams
+            .AsNoTracking()
+            .Include(t => t.Members)
+            .Include(t => t.Leader)
+            .ToListAsync(cancellationToken);
+
+        return Result.Success(mapper.Map<IEnumerable<TeamResponse>>(teams));
+    }
+
+    public async Task<Result<TeamResponse>> CreateAsync(
+        CreateTeamRequest request, CancellationToken cancellationToken = default)
+    {
+        var team = new Team
+        {
+            Name = request.Name,
+            Description = request.Description,
+            LeaderId = CurrentUserId,
+            MaxMembers = TeamSettings.MaxMembers, 
+            Status = TeamStatus.Open
+        };
+
+
+        await context.Teams.AddAsync(team, cancellationToken);
+
+        await context.TeamMembers.AddAsync(new TeamMember
+        {
+            TeamId = team.Id,
+            UserId = CurrentUserId,
+            Role = MemberRole.Leader,
+            JoinedAt = DateTime.UtcNow
+        }, cancellationToken);
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        return await GetByIdAsync(team.Id, cancellationToken);
+    }
+
+    public async Task<Result<TeamResponse>> UpdateAsync(
+        Guid id, UpdateTeamRequest request, CancellationToken cancellationToken = default)
+    {
+        var team = await context.Teams
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+
+        if (team is null)
+            return Result.Failure<TeamResponse>(TeamErrors.TeamNotFound);
+
+        if (team.LeaderId != CurrentUserId)
+            return Result.Failure<TeamResponse>(TeamErrors.NotTeamLeader);
+
+        if (request.Name is not null) team.Name = request.Name;
+        if (request.Description is not null) team.Description = request.Description;
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        return await GetByIdAsync(id, cancellationToken);
+    }
+
+    public async Task<Result> DeleteAsync(
+        Guid id, CancellationToken cancellationToken = default)
+    {
+        var team = await context.FindAsync<Team>([id], cancellationToken);
 
-//         team.Name = request.Name ?? team.Name;
-//         team.Description = request.Description ?? team.Description;
+        if (team is null || team.IsDeleted)
+            return Result.Failure(TeamErrors.TeamNotFound);
 
-//         await context.SaveChangesAsync(cancellationToken);
+        if (team.LeaderId != CurrentUserId)
+            return Result.Failure(TeamErrors.NotTeamLeader);
 
-//         return await GetByIdAsync(id, cancellationToken);
-//     }
+        team.IsDeleted = true;
 
-//     public async Task<Result> DeleteAsync(
-//         Guid id, CancellationToken cancellationToken = default)
-//     {
-//         var team = await context.Teams
-//             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
 
-//         if (team is null)
-//             return Result.Failure(TeamErrors.TeamNotFound);
+        return Result.Success();
+    }
 
-//         if (team.LeaderId != CurrentUserId)
-//             return Result.Failure(TeamErrors.NotTeamLeader);
+    public async Task<Result> AddMemberAsync(
+        Guid id, string userId, CancellationToken cancellationToken = default)
+    {
+        var team = await context.Teams
+            .Include(t => t.Members)
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
-//         context.Teams.Remove(team);
-//         await context.SaveChangesAsync(cancellationToken);
+        if (team is null)
+            return Result.Failure(TeamErrors.TeamNotFound);
 
-//         return Result.Success();
-//     }
+        if (team.LeaderId != CurrentUserId)
+            return Result.Failure(TeamErrors.NotTeamLeader);
 
-//     // Members management
-//     public async Task<Result> AddMemberAsync(
-//         Guid id, string userId, CancellationToken cancellationToken = default)
-//     {
-//         var team = await context.Teams
-//             .Include(t => t.Members)
-//             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        if (team.Members.Any(m => m.UserId == userId))
+            return Result.Failure(TeamErrors.AlreadyMember);
 
-//         if (team is null)
-//             return Result.Failure(TeamErrors.TeamNotFound);
+        if (team.Members.Count >= team.MaxMembers)
+            return Result.Failure(TeamErrors.TeamFull);
 
-//         if (team.LeaderId != CurrentUserId)
-//             return Result.Failure(TeamErrors.NotTeamLeader);
+        await context.TeamMembers.AddAsync(new TeamMember
+        {
+            TeamId = id,
+            UserId = userId,
+            Role = MemberRole.Member,
+            JoinedAt = DateTime.UtcNow
+        }, cancellationToken);
 
-//         if (team.Members.Any(m => m.UserId == userId))
-//             return Result.Failure(TeamErrors.AlreadyMember);
+        team.Status = team.Members.Count + 1 >= team.MaxMembers
+            ? TeamStatus.Full
+            : TeamStatus.Partial;
 
-//         if (team.Members.Count >= team.MaxMembers)
-//             return Result.Failure(TeamErrors.TeamFull);
+        await context.SaveChangesAsync(cancellationToken);
 
-//         await context.TeamMembers.AddAsync(new TeamMember
-//         {
-//             TeamId = id,
-//             UserId = userId,
-//             Role = MemberRole.Member,
-//             JoinedAt = DateTime.UtcNow
-//         }, cancellationToken);
+        await notificationService.SendAsync(
+            userId,
+            NotificationType.TeamMemberJoined,
+            $"You have been added to team {team.Name}",
+            team.Id,
+            cancellationToken);
 
-//         // Update team status
-//         if (team.Members.Count + 1 >= team.MaxMembers)
-//             team.Status = TeamStatus.Full;
-//         else
-//             team.Status = TeamStatus.Partial;
+        return Result.Success();
+    }
 
-//         await context.SaveChangesAsync(cancellationToken);
+    public async Task<Result> RemoveMemberAsync(
+        Guid id, string userId, CancellationToken cancellationToken = default)
+    {
+        var team = await context.Teams
+            .Include(t => t.Members)
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
-//         // Notify new member
-//         await notificationService.SendAsync(
-//             userId,
-//             NotificationType.TeamMemberJoined,
-//             $"You have been added to team {team.Name}",
-//             team.Id,
-//             cancellationToken);
+        if (team is null)
+            return Result.Failure(TeamErrors.TeamNotFound);
 
-//         return Result.Success();
-//     }
+        if (team.LeaderId != CurrentUserId)
+            return Result.Failure(TeamErrors.NotTeamLeader);
 
-//     public async Task<Result> RemoveMemberAsync(
-//         Guid id, string userId, CancellationToken cancellationToken = default)
-//     {
-//         var team = await context.Teams
-//             .Include(t => t.Members)
-//             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        var member = team.Members.FirstOrDefault(m => m.UserId == userId);
 
-//         if (team is null)
-//             return Result.Failure(TeamErrors.TeamNotFound);
+        if (member is null)
+            return Result.Failure(TeamErrors.MemberNotFound);
 
-//         if (team.LeaderId != CurrentUserId)
-//             return Result.Failure(TeamErrors.NotTeamLeader);
+        context.TeamMembers.Remove(member);
 
-//         var member = team.Members.FirstOrDefault(m => m.UserId == userId);
+        if (team.Members.Count - 1 < team.MaxMembers)
+            team.Status = TeamStatus.Partial;
 
-//         if (member is null)
-//             return Result.Failure(TeamErrors.MemberNotFound);
+        await context.SaveChangesAsync(cancellationToken);
 
-//         context.TeamMembers.Remove(member);
+        return Result.Success();
+    }
 
-//         // Update team status
-//         if (team.Members.Count - 1 < team.MaxMembers)
-//             team.Status = TeamStatus.Partial;
+    public async Task<Result> LeaveAsync(
+        Guid id, CancellationToken cancellationToken = default)
+    {
+        var team = await context.Teams
+            .Include(t => t.Members)
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
-//         await context.SaveChangesAsync(cancellationToken);
+        if (team is null)
+            return Result.Failure(TeamErrors.TeamNotFound);
 
-//         return Result.Success();
-//     }
+        if (team.LeaderId == CurrentUserId)
+            return Result.Failure(TeamErrors.LeaderCannotLeave);
 
-//     public async Task<Result> LeaveAsync(
-//         Guid id, CancellationToken cancellationToken = default)
-//     {
-//         var team = await context.Teams
-//             .Include(t => t.Members)
-//             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        var member = team.Members.FirstOrDefault(m => m.UserId == CurrentUserId);
 
-//         if (team is null)
-//             return Result.Failure(TeamErrors.TeamNotFound);
+        if (member is null)
+            return Result.Failure(TeamErrors.MemberNotFound);
 
-//         if (team.LeaderId == CurrentUserId)
-//             return Result.Failure(TeamErrors.LeaderCannotLeave);
+        context.TeamMembers.Remove(member);
 
-//         var member = team.Members.FirstOrDefault(m => m.UserId == CurrentUserId);
+        if (team.Members.Count - 1 < team.MaxMembers)
+            team.Status = TeamStatus.Partial;
 
-//         if (member is null)
-//             return Result.Failure(TeamErrors.MemberNotFound);
+        await context.SaveChangesAsync(cancellationToken);
 
-//         context.TeamMembers.Remove(member);
+        return Result.Success();
+    }
 
-//         // Update team status
-//         if (team.Members.Count - 1 < team.MaxMembers)
-//             team.Status = TeamStatus.Partial;
+    public async Task<Result> ChangeStatusAsync(
+        Guid id, TeamStatus status, CancellationToken cancellationToken = default)
+    {
+        var team = await context.FindAsync<Team>([id], cancellationToken);
 
-//         await context.SaveChangesAsync(cancellationToken);
+        if (team is null || team.IsDeleted)
+            return Result.Failure(TeamErrors.TeamNotFound);
 
-//         return Result.Success();
-//     }
+        if (team.LeaderId != CurrentUserId)
+            return Result.Failure(TeamErrors.NotTeamLeader);
 
-//     // Status
-//     public async Task<Result> ChangeStatusAsync(
-//         Guid id, TeamStatus status, CancellationToken cancellationToken = default)
-//     {
-//         var team = await context.Teams
-//             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        team.Status = status;
 
-//         if (team is null)
-//             return Result.Failure(TeamErrors.TeamNotFound);
+        await context.SaveChangesAsync(cancellationToken);
 
-//         if (team.LeaderId != CurrentUserId)
-//             return Result.Failure(TeamErrors.NotTeamLeader);
+        return Result.Success();
+    }
 
-//         team.Status = status;
+    public async Task<Result> AssignIdeaAsync(
+        Guid teamId, Guid ideaId, CancellationToken cancellationToken = default)
+    {
+        var team = await context.FindAsync<Team>([teamId], cancellationToken);
 
-//         await context.SaveChangesAsync(cancellationToken);
+        if (team is null || team.IsDeleted)
+            return Result.Failure(TeamErrors.TeamNotFound);
 
-//         return Result.Success();
-//     }
+        if (team.LeaderId != CurrentUserId)
+            return Result.Failure(TeamErrors.NotTeamLeader);
 
-//     // Idea
-//     public async Task<Result> AssignIdeaAsync(
-//         Guid teamId, Guid ideaId, CancellationToken cancellationToken = default)
-//     {
-//         var team = await context.Teams
-//             .FirstOrDefaultAsync(t => t.Id == teamId, cancellationToken);
+        var ideaExists = await context.Ideas
+            .AnyAsync(i => i.Id == ideaId, cancellationToken);
 
-//         if (team is null)
-//             return Result.Failure(TeamErrors.TeamNotFound);
+        if (!ideaExists)
+            return Result.Failure(TeamErrors.IdeaNotFound);
 
-//         if (team.LeaderId != CurrentUserId)
-//             return Result.Failure(TeamErrors.NotTeamLeader);
+        team.IdeaId = ideaId;
+        team.Status = TeamStatus.IdeaSelection;
 
-//         var idea = await context.Ideas
-//             .FirstOrDefaultAsync(i => i.Id == ideaId, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
 
-//         if (idea is null)
-//             return Result.Failure(TeamErrors.IdeaNotFound);
-
-//         team.IdeaId = ideaId;
-//         team.Status = TeamStatus.IdeaSelection;
-
-//         await context.SaveChangesAsync(cancellationToken);
-
-//         return Result.Success();
-//     }
-// }
+        return Result.Success();
+    }
+}

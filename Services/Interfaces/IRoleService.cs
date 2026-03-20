@@ -1,6 +1,7 @@
+using EduBridge.Abstractions;
 using EduBridge.Contracts.Role;
 
-namespace EduBridge.Abstractions.Services;
+namespace EduBridge.Services.Interfaces;
 
 public interface IRoleService
 {

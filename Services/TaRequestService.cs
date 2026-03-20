@@ -1,252 +1,216 @@
-// using System.Security.Claims;
-// using EduBridge.Abstractions;
-// using EduBridge.Abstractions.Consts;
-// using EduBridge.Contracts.TA;
-// using EduBridge.Persistence;
-// using EduBridge.Services.Interfaces;
-// using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using EduBridge.Abstractions;
+using EduBridge.Abstractions.Consts;
+using EduBridge.Contracts.TA;
+using EduBridge.Errors;
+using EduBridge.Entities;
+using EduBridge.Persistence;
+using EduBridge.Services.Interfaces;
+using MapsterMapper;
+using Microsoft.EntityFrameworkCore;
 
-// namespace EduBridge.Services;
+namespace EduBridge.Services;
 
-// public class TaRequestService(
-//     ApplicationDbContext context,
-//     INotificationService notificationService,
-//     IHttpContextAccessor httpContextAccessor) : ITaRequestService
-// {
-//     private string CurrentUserId => httpContextAccessor.HttpContext!.User
-//         .FindFirstValue(ClaimTypes.NameIdentifier)!;
+public class TaRequestService(
+    ApplicationDbContext context,
+    INotificationService notificationService,
+    IHttpContextAccessor httpContextAccessor,
+    IMapper mapper) : ITaRequestService
+{
+    private string CurrentUserId => httpContextAccessor.HttpContext!.User
+        .FindFirstValue(ClaimTypes.NameIdentifier)!;
 
-//     // Queries
-//     public async Task<Result<IEnumerable<TaRequestResponse>>> GetIncomingRequestsAsync(
-//         Guid taId, CancellationToken cancellationToken = default)
-//     {
-//         var ta = await context.TeachingAssistants
-//             .FirstOrDefaultAsync(ta => ta.Id == taId, cancellationToken);
+    public async Task<Result<IEnumerable<TaRequestResponse>>> GetIncomingRequestsAsync(
+        Guid taId, CancellationToken cancellationToken = default)
+    {
+        var ta = await context.TeachingAssistants
+            .FirstOrDefaultAsync(ta => ta.Id == taId, cancellationToken);
 
-//         if (ta is null)
-//             return Result.Failure<IEnumerable<TaRequestResponse>>(TAErrors.TANotFound);
+        if (ta is null)
+            return Result.Failure<IEnumerable<TaRequestResponse>>(TaErrors.TaNotFound);
 
-//         if (ta.UserId != CurrentUserId)
-//             return Result.Failure<IEnumerable<TaRequestResponse>>(TAErrors.NotAuthorized);
+        if (ta.UserId != CurrentUserId)
+            return Result.Failure<IEnumerable<TaRequestResponse>>(TaErrors.NotAuthorized);
 
-//         var requests = await context.TARequests
-//             .Include(tr => tr.Team)
-//             .Include(tr => tr.TA)
-//             .ThenInclude(ta => ta.User)
-//             .Where(tr => tr.TAId == taId)
-//             .ToListAsync(cancellationToken);
+        var requests = await context.TaRequests
+            .AsNoTracking()
+            .Include(tr => tr.Team)
+            .Include(tr => tr.TA).ThenInclude(t => t.User)
+            .Where(tr => tr.TAId == taId)
+            .ToListAsync(cancellationToken);
 
-//         var response = requests.Select(tr => new TaRequestResponse(
-//             tr.Id,
-//             tr.TeamId,
-//             tr.Team.Name,
-//             $"{tr.TA.User.FirstName} {tr.TA.User.LastName}",
-//             tr.TA.Department,
-//             tr.Status,
-//             tr.Message,
-//             tr.ResponseMessage,
-//             tr.CreatedOn,
-//             tr.RespondedAt
-//         ));
+        return Result.Success(mapper.Map<IEnumerable<TaRequestResponse>>(requests));
+    }
 
-//         return Result.Success(response);
-//     }
+    public async Task<Result<IEnumerable<TaRequestResponse>>> GetTeamRequestsAsync(
+        Guid teamId, CancellationToken cancellationToken = default)
+    {
+        var team = await context.Teams
+            .FirstOrDefaultAsync(t => t.Id == teamId, cancellationToken);
 
-//     public async Task<Result<IEnumerable<TaRequestResponse>>> GetTeamRequestsAsync(
-//         Guid teamId, CancellationToken cancellationToken = default)
-//     {
-//         var team = await context.Teams
-//             .FirstOrDefaultAsync(t => t.Id == teamId, cancellationToken);
+        if (team is null)
+            return Result.Failure<IEnumerable<TaRequestResponse>>(TeamErrors.TeamNotFound);
 
-//         if (team is null)
-//             return Result.Failure<IEnumerable<TaRequestResponse>>(TeamErrors.TeamNotFound);
+        if (team.LeaderId != CurrentUserId)
+            return Result.Failure<IEnumerable<TaRequestResponse>>(TeamErrors.NotTeamLeader);
 
-//         if (team.LeaderId != CurrentUserId)
-//             return Result.Failure<IEnumerable<TaRequestResponse>>(TeamErrors.NotTeamLeader);
+        var requests = await context.TaRequests
+            .AsNoTracking()
+            .Include(tr => tr.Team)
+            .Include(tr => tr.TA).ThenInclude(t => t.User)
+            .Where(tr => tr.TeamId == teamId)
+            .ToListAsync(cancellationToken);
 
-//         var requests = await context.TARequests
-//             .Include(tr => tr.Team)
-//             .Include(tr => tr.TA)
-//             .ThenInclude(ta => ta.User)
-//             .Where(tr => tr.TeamId == teamId)
-//             .ToListAsync(cancellationToken);
+        return Result.Success(mapper.Map<IEnumerable<TaRequestResponse>>(requests));
+    }
 
-//         var response = requests.Select(tr => new TaRequestResponse(
-//             tr.Id,
-//             tr.TeamId,
-//             tr.Team.Name,
-//             $"{tr.TA.User.FirstName} {tr.TA.User.LastName}",
-//             tr.TA.Department,
-//             tr.Status,
-//             tr.Message,
-//             tr.ResponseMessage,
-//             tr.CreatedOn,
-//             tr.RespondedAt
-//         ));
+    public async Task<Result> SendAsync(
+        Guid teamId, Guid taId, string? message, CancellationToken cancellationToken = default)
+    {
+        var team = await context.Teams
+            .FirstOrDefaultAsync(t => t.Id == teamId, cancellationToken);
 
-//         return Result.Success(response);
-//     }
+        if (team is null)
+            return Result.Failure(TeamErrors.TeamNotFound);
 
-//     // Team leader operations
-//     public async Task<Result> SendAsync(
-//         Guid teamId, Guid taId, string? message, CancellationToken cancellationToken = default)
-//     {
-//         var team = await context.Teams
-//             .FirstOrDefaultAsync(t => t.Id == teamId, cancellationToken);
+        if (team.LeaderId != CurrentUserId)
+            return Result.Failure(TeamErrors.NotTeamLeader);
 
-//         if (team is null)
-//             return Result.Failure(TeamErrors.TeamNotFound);
+        var ta = await context.TeachingAssistants
+            .FirstOrDefaultAsync(ta => ta.Id == taId, cancellationToken);
 
-//         if (team.LeaderId != CurrentUserId)
-//             return Result.Failure(TeamErrors.NotTeamLeader);
+        if (ta is null)
+            return Result.Failure(TaErrors.TaNotFound);
 
-//         var ta = await context.TeachingAssistants
-//             .FirstOrDefaultAsync(ta => ta.Id == taId, cancellationToken);
+        if (!ta.IsAvailable)
+            return Result.Failure(TaErrors.TaNotAvailable);
 
-//         if (ta is null)
-//             return Result.Failure(TAErrors.TANotFound);
+        var existingRequest = await context.TaRequests
+            .AnyAsync(tr => tr.TeamId == teamId
+                && tr.TAId == taId
+                && tr.Status == RequestStatus.Pending, cancellationToken);
 
-//         if (!ta.IsAvailable)
-//             return Result.Failure(TAErrors.TANotAvailable);
+        if (existingRequest)
+            return Result.Failure(TaRequestErrors.RequestAlreadyExists);
 
-//         var existingRequest = await context.TARequests
-//             .FirstOrDefaultAsync(tr => tr.TeamId == teamId
-//                 && tr.TAId == taId
-//                 && tr.Status == RequestStatus.Pending, cancellationToken);
+        var request = new TaRequest
+        {
+            TeamId = teamId,
+            TAId = taId,
+            Message = message,
+            Status = RequestStatus.Pending
+        };
 
-//         if (existingRequest is not null)
-//             return Result.Failure(TARequestErrors.RequestAlreadyExists);
+        await context.TaRequests.AddAsync(request, cancellationToken);
 
-//         var request = new TARequest
-//         {
-//             TeamId = teamId,
-//             TAId = taId,
-//             Message = message,
-//             Status = RequestStatus.Pending
-//         };
+        team.Status = TeamStatus.TaPending;
 
-//         await context.TARequests.AddAsync(request, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
 
-//         // Update team status
-//         team.Status = TeamStatus.TaPending;
+        await notificationService.SendAsync(
+            ta.UserId,
+            NotificationType.TaRequestReceived,
+            $"Team {team.Name} has requested your supervision",
+            request.Id,
+            cancellationToken);
 
-//         await context.SaveChangesAsync(cancellationToken);
+        return Result.Success();
+    }
 
-//         // Notify TA
-//         await notificationService.SendAsync(
-//             ta.UserId,
-//             NotificationType.TARequestReceived,
-//             $"Team {team.Name} has requested your supervision",
-//             request.Id,
-//             cancellationToken);
+    public async Task<Result> CancelAsync(
+        Guid id, CancellationToken cancellationToken = default)
+    {
+        var request = await context.TaRequests
+            .Include(tr => tr.Team)
+            .FirstOrDefaultAsync(tr => tr.Id == id, cancellationToken);
 
-//         return Result.Success();
-//     }
+        if (request is null)
+            return Result.Failure(TaRequestErrors.RequestNotFound);
 
-//     public async Task<Result> CancelAsync(
-//         Guid id, CancellationToken cancellationToken = default)
-//     {
-//         var request = await context.TARequests
-//             .Include(tr => tr.Team)
-//             .FirstOrDefaultAsync(tr => tr.Id == id, cancellationToken);
+        if (request.Team.LeaderId != CurrentUserId)
+            return Result.Failure(TeamErrors.NotTeamLeader);
 
-//         if (request is null)
-//             return Result.Failure(TARequestErrors.RequestNotFound);
+        if (request.Status != RequestStatus.Pending)
+            return Result.Failure(TaRequestErrors.RequestNotPending);
 
-//         if (request.Team.LeaderId != CurrentUserId)
-//             return Result.Failure(TeamErrors.NotTeamLeader);
+        request.Status = RequestStatus.Cancelled;
+        request.Team.Status = TeamStatus.Full;
 
-//         if (request.Status != RequestStatus.Pending)
-//             return Result.Failure(TARequestErrors.RequestNotPending);
+        await context.SaveChangesAsync(cancellationToken);
 
-//         request.Status = RequestStatus.Cancelled;
+        return Result.Success();
+    }
 
-//         // Revert team status
-//         request.Team.Status = TeamStatus.Full;
+    public async Task<Result> ApproveAsync(
+        Guid id, string? responseMessage, CancellationToken cancellationToken = default)
+    {
+        var request = await context.TaRequests
+            .Include(tr => tr.Team)
+            .Include(tr => tr.TA)
+            .FirstOrDefaultAsync(tr => tr.Id == id, cancellationToken);
 
-//         await context.SaveChangesAsync(cancellationToken);
+        if (request is null)
+            return Result.Failure(TaRequestErrors.RequestNotFound);
 
-//         return Result.Success();
-//     }
+        if (request.TA.UserId != CurrentUserId)
+            return Result.Failure(TaErrors.NotAuthorized);
 
-//     // TA operations
-//     public async Task<Result> ApproveAsync(
-//         Guid id, string? responseMessage, CancellationToken cancellationToken = default)
-//     {
-//         var request = await context.TARequests
-//             .Include(tr => tr.Team)
-//             .Include(tr => tr.TA)
-//             .FirstOrDefaultAsync(tr => tr.Id == id, cancellationToken);
+        if (request.Status != RequestStatus.Pending)
+            return Result.Failure(TaRequestErrors.RequestNotPending);
 
-//         if (request is null)
-//             return Result.Failure(TARequestErrors.RequestNotFound);
+        request.Status = RequestStatus.Approved;
+        request.ResponseMessage = responseMessage;
+        request.RespondedByTAId = request.TAId;
+        request.RespondedAt = DateTime.UtcNow;
 
-//         if (request.TA.UserId != CurrentUserId)
-//             return Result.Failure(TAErrors.NotAuthorized);
+        request.Team.TaId = request.TAId;
+        request.Team.Status = TeamStatus.TaApproved;
+        request.TA.AvailableSlots--;
 
-//         if (request.Status != RequestStatus.Pending)
-//             return Result.Failure(TARequestErrors.RequestNotPending);
+        await context.SaveChangesAsync(cancellationToken);
 
-//         request.Status = RequestStatus.Approved;
-//         request.ResponseMessage = responseMessage;
-//         request.RespondedByTAId = request.TAId;
-//         request.RespondedAt = DateTime.UtcNow;
+        await notificationService.SendAsync(
+            request.Team.LeaderId,
+            NotificationType.TaRequestAccepted,
+            $"Your request for Ta supervision has been accepted",
+            request.Id,
+            cancellationToken);
 
-//         // Assign TA to team
-//         request.Team.TaId = request.TAId;
-//         request.Team.Status = TeamStatus.TaApproved;
+        return Result.Success();
+    }
 
-//         // Decrease TA available slots
-//         request.TA.AvailableSlots--;
+    public async Task<Result> RejectAsync(
+        Guid id, string? responseMessage, CancellationToken cancellationToken = default)
+    {
+        var request = await context.TaRequests
+            .Include(tr => tr.Team)
+            .Include(tr => tr.TA)
+            .FirstOrDefaultAsync(tr => tr.Id == id, cancellationToken);
 
-//         await context.SaveChangesAsync(cancellationToken);
+        if (request is null)
+            return Result.Failure(TaRequestErrors.RequestNotFound);
 
-//         // Notify team leader
-//         await notificationService.SendAsync(
-//             request.Team.LeaderId,
-//             NotificationType.TARequestAccepted,
-//             $"Your request for TA supervision has been accepted",
-//             request.Id,
-//             cancellationToken);
+        if (request.TA.UserId != CurrentUserId)
+            return Result.Failure(TaErrors.NotAuthorized);
 
-//         return Result.Success();
-//     }
+        if (request.Status != RequestStatus.Pending)
+            return Result.Failure(TaRequestErrors.RequestNotPending);
 
-//     public async Task<Result> RejectAsync(
-//         Guid id, string? responseMessage, CancellationToken cancellationToken = default)
-//     {
-//         var request = await context.TARequests
-//             .Include(tr => tr.Team)
-//             .Include(tr => tr.TA)
-//             .FirstOrDefaultAsync(tr => tr.Id == id, cancellationToken);
+        request.Status = RequestStatus.Rejected;
+        request.ResponseMessage = responseMessage;
+        request.RespondedByTAId = request.TAId;
+        request.RespondedAt = DateTime.UtcNow;
+        request.Team.Status = TeamStatus.Full;
 
-//         if (request is null)
-//             return Result.Failure(TARequestErrors.RequestNotFound);
+        await context.SaveChangesAsync(cancellationToken);
 
-//         if (request.TA.UserId != CurrentUserId)
-//             return Result.Failure(TAErrors.NotAuthorized);
+        await notificationService.SendAsync(
+            request.Team.LeaderId,
+            NotificationType.TaRequestRejected,
+            $"Your request for Ta supervision has been rejected",
+            request.Id,
+            cancellationToken);
 
-//         if (request.Status != RequestStatus.Pending)
-//             return Result.Failure(TARequestErrors.RequestNotPending);
-
-//         request.Status = RequestStatus.Rejected;
-//         request.ResponseMessage = responseMessage;
-//         request.RespondedByTAId = request.TAId;
-//         request.RespondedAt = DateTime.UtcNow;
-
-//         // Revert team status
-//         request.Team.Status = TeamStatus.Full;
-
-//         await context.SaveChangesAsync(cancellationToken);
-
-//         // Notify team leader
-//         await notificationService.SendAsync(
-//             request.Team.LeaderId,
-//             NotificationType.TARequestRejected,
-//             $"Your request for TA supervision has been rejected",
-//             request.Id,
-//             cancellationToken);
-
-//         return Result.Success();
-//     }
-// }
+        return Result.Success();
+    }
+}

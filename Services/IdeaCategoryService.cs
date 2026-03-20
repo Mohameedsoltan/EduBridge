@@ -4,32 +4,29 @@ using EduBridge.Entities;
 using EduBridge.Errors;
 using EduBridge.Persistence;
 using EduBridge.Services.Interfaces;
+using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 
 namespace EduBridge.Services;
 
-public class IdeaCategoryService(ApplicationDbContext context) : IIdeaCategoryService
+public class IdeaCategoryService(
+    ApplicationDbContext context,
+    IMapper mapper) : IIdeaCategoryService
 {
     public async Task<Result<IEnumerable<IdeaCategoryResponse>>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
         var categories = await context.IdeaCategories
             .AsNoTracking()
-
-            .Select(c => new IdeaCategoryResponse(
-                c.Id,
-                c.Name,
-                c.Tags.Select(t => t.Name)
-            ))
+            .Include(c => c.Tags)
             .ToListAsync(cancellationToken);
 
-        return Result.Success<IEnumerable<IdeaCategoryResponse>>(categories);
+        return Result.Success<IEnumerable<IdeaCategoryResponse>>(mapper.Map<IEnumerable<IdeaCategoryResponse>>(categories));
     }
 
     public async Task<Result<Guid>> GetOrCreateAsync(
         string name, CancellationToken cancellationToken = default)
     {
-        
         name = name.Trim().ToLowerInvariant();
 
         var existing = await context.IdeaCategories
@@ -47,7 +44,6 @@ public class IdeaCategoryService(ApplicationDbContext context) : IIdeaCategorySe
         }
         catch (DbUpdateException)
         {
-            
             var category = await context.IdeaCategories
                 .FirstOrDefaultAsync(c => c.Name == name, cancellationToken);
 
@@ -58,7 +54,6 @@ public class IdeaCategoryService(ApplicationDbContext context) : IIdeaCategorySe
     public async Task<Result<IdeaCategoryResponse>> UpdateAsync(
         Guid id, UpdateIdeaCategoryRequest request, CancellationToken cancellationToken = default)
     {
-        
         var category = await context.IdeaCategories
             .Include(c => c.Tags)
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
@@ -78,17 +73,12 @@ public class IdeaCategoryService(ApplicationDbContext context) : IIdeaCategorySe
 
         await context.SaveChangesAsync(cancellationToken);
 
-        return Result.Success(new IdeaCategoryResponse(
-            category.Id,
-            category.Name,
-            category.Tags.Select(t => t.Name)
-        ));
+        return Result.Success(mapper.Map<IdeaCategoryResponse>(category));
     }
 
     public async Task<Result> DeleteAsync(
         Guid id, CancellationToken cancellationToken = default)
     {
-        
         var category = await context.FindAsync<IdeaCategory>([id], cancellationToken);
 
         if (category is null || category.IsDeleted)

@@ -1,4 +1,4 @@
-using EduBridge.Enums;
+using EduBridge.Abstractions.Consts;
 
 namespace EduBridge.Entities;
 
@@ -18,17 +18,7 @@ public class Team : AuditableEntity
     // Navigation
     public ICollection<TeamMember> Members { get; set; } = [];
     public ICollection<JoinRequest> JoinRequests { get; set; } = [];
-    public ICollection<TARequest> TARequests { get; set; } = [];
+    public ICollection<TaRequest> TARequests { get; set; } = [];
     public Guid? DoctorId { get; set; }
     public Doctor? Doctor { get; set; }
-}
-
-public class TeamMember : AuditableEntity
-{
-    public Guid TeamId { get; set; }
-    public Team Team { get; set; } = null!;
-    public string UserId { get; set; } = string.Empty;
-    public ApplicationUser User { get; set; } = null!;
-    public MemberRole Role { get; set; } = MemberRole.Member;
-    public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
 }
