@@ -4,9 +4,10 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace EduBridge.Persistence.EntitiesConfiguration;
 
-public class TeamConfiguration : IEntityTypeConfiguration<Team>
+// TeamConfiguration.cs
+public class TeamConfiguration : SoftDeleteConfiguration<Team>
 {
-    public void Configure(EntityTypeBuilder<Team> builder)
+    protected override void ConfigureEntity(EntityTypeBuilder<Team> builder)
     {
         builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
         builder.Property(x => x.Description).HasMaxLength(2000);

@@ -5,10 +5,7 @@ namespace EduBridge.Services.Interfaces;
 
 public interface IIdeaCategoryService
 {
-    // Queries
     Task<Result<IEnumerable<IdeaCategoryResponse>>> GetAllAsync(CancellationToken cancellationToken = default);
-
-    // Operations
     Task<Result<Guid>> GetOrCreateAsync(string name, CancellationToken cancellationToken = default);
 
     // Admin operations

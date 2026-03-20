@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace EduBridge.Persistence.EntitiesConfiguration;
 
-public class JoinRequestConfiguration : IEntityTypeConfiguration<JoinRequest>
+public class JoinRequestConfiguration : SoftDeleteConfiguration<JoinRequest>
 {
-    public void Configure(EntityTypeBuilder<JoinRequest> builder)
+    protected override void ConfigureEntity(EntityTypeBuilder<JoinRequest> builder)
     {
         builder.HasOne(x => x.Team)
             .WithMany(x => x.JoinRequests)

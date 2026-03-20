@@ -14,7 +14,7 @@ public class ApplicationDbContext(
     public DbSet<Team> Teams { get; set; } = null!;
     public DbSet<TeamMember> TeamMembers { get; set; } = null!;
     public DbSet<JoinRequest> JoinRequests { get; set; } = null!;
-    public DbSet<TARequest> TARequests { get; set; } = null!;
+    public DbSet<TARequest> TaRequests { get; set; } = null!;
     public DbSet<DoctorRequest> DoctorRequests { get; set; } = null!;
     public DbSet<TeachingAssistant> TeachingAssistants { get; set; } = null!;
     public DbSet<Doctor> Doctors { get; set; } = null!;
@@ -25,21 +25,21 @@ public class ApplicationDbContext(
     public DbSet<IdeaTag> IdeaTags { get; set; } = null!;
     public DbSet<Rating> Ratings { get; set; } = null!;
     public DbSet<Notification> Notifications { get; set; } = null!;
-
+    
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        var cascadeFKs = modelBuilder.Model
-             .GetEntityTypes()
-             .SelectMany(t => t.GetForeignKeys())
-             .Where(fk => !fk.IsOwnership && fk.DeleteBehavior == DeleteBehavior.Cascade);
-
-        foreach (var fk in cascadeFKs)
-            fk.DeleteBehavior = DeleteBehavior.Restrict;
+        base.OnModelCreating(modelBuilder);
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
 
-        base.OnModelCreating(modelBuilder);
+        var cascadeFKs = modelBuilder.Model
+            .GetEntityTypes()
+            .SelectMany(t => t.GetForeignKeys())
+            .Where(fk => fk is { IsOwnership: false, DeleteBehavior: DeleteBehavior.Cascade });
+
+        foreach (var fk in cascadeFKs)
+            fk.DeleteBehavior = DeleteBehavior.Restrict;
     }
 
     public override Task<int> SaveChangesAsync(

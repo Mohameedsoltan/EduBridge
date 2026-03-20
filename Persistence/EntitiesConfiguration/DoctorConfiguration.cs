@@ -3,9 +3,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace EduBridge.Persistence.EntitiesConfiguration;
 
-public class DoctorConfiguration : IEntityTypeConfiguration<Doctor>
+public class DoctorConfiguration : SoftDeleteConfiguration<Doctor>
 {
-    public void Configure(EntityTypeBuilder<Doctor> builder)
+    protected override void ConfigureEntity(EntityTypeBuilder<Doctor> builder)
     {
         builder.Property(x => x.Department).HasMaxLength(200).IsRequired();
         builder.Property(x => x.AcademicTitle).HasMaxLength(200);

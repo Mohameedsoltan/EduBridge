@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace EduBridge.Persistence.EntitiesConfiguration;
 
-
 public class ApplicationUserConfiguration : IEntityTypeConfiguration<ApplicationUser>
 {
     public void Configure(EntityTypeBuilder<ApplicationUser> builder)
@@ -24,5 +23,11 @@ public class ApplicationUserConfiguration : IEntityTypeConfiguration<Application
         builder.HasMany(x => x.Teams)
             .WithOne(x => x.User)
             .HasForeignKey(x => x.UserId);
+
+        builder.OwnsMany(x => x.RefreshTokens, rt =>
+        {
+            rt.Property(x => x.Token).HasMaxLength(500).IsRequired();
+            rt.HasIndex(x => x.Token).IsUnique();
+        });
     }
 }

@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace EduBridge.Persistence.EntitiesConfiguration;
 
-public class DoctorRequestConfiguration : IEntityTypeConfiguration<DoctorRequest>
+public class DoctorRequestConfiguration : SoftDeleteConfiguration<DoctorRequest>
 {
-    public void Configure(EntityTypeBuilder<DoctorRequest> builder)
+    protected override void ConfigureEntity(EntityTypeBuilder<DoctorRequest> builder)
     {
         builder.HasOne(x => x.Team)
             .WithMany()

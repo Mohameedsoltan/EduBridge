@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace EduBridge.Persistence.EntitiesConfiguration;
 
-public class RatingConfiguration : IEntityTypeConfiguration<Rating>
+public class RatingConfiguration : SoftDeleteConfiguration<Rating>
 {
-    public void Configure(EntityTypeBuilder<Rating> builder)
+    protected override void ConfigureEntity(EntityTypeBuilder<Rating> builder)
     {
         builder.HasOne(x => x.Team)
             .WithMany()

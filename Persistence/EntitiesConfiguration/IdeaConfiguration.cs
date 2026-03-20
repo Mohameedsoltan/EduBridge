@@ -1,12 +1,11 @@
 using EduBridge.Entities;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace EduBridge.Persistence.EntitiesConfiguration;
 
-public class IdeaConfiguration : IEntityTypeConfiguration<Idea>
+public class IdeaConfiguration : SoftDeleteConfiguration<Idea>
 {
-    public void Configure(EntityTypeBuilder<Idea> builder)
+    protected override void ConfigureEntity(EntityTypeBuilder<Idea> builder)
     {
         builder.Property(x => x.Title).HasMaxLength(200).IsRequired();
         builder.Property(x => x.Description).HasMaxLength(3000).IsRequired();
