@@ -13,7 +13,8 @@ public static class RoleSeeder
         {
             DefaultRoles.Admin,
             DefaultRoles.Student,
-            DefaultRoles.TA
+            DefaultRoles.TA,
+            DefaultRoles.Doctor
         };
 
         foreach (var role in roles)

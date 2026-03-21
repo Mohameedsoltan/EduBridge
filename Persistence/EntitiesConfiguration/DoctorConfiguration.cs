@@ -12,8 +12,8 @@ public class DoctorConfiguration : SoftDeleteConfiguration<Doctor>
         builder.Property(x => x.OfficeLocation).HasMaxLength(200);
 
         builder.HasOne(x => x.User)
-            .WithMany()
-            .HasForeignKey(x => x.UserId)
-            .OnDelete(DeleteBehavior.Restrict);
+        .WithOne()
+        .HasForeignKey<Doctor>(x => x.UserId)
+        .OnDelete(DeleteBehavior.Restrict);
     }
 }
