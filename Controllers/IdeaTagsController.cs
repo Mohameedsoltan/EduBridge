@@ -40,13 +40,13 @@ public class IdeaTagsController(
 
     [HttpPost("get-or-create")]
     public async Task<IActionResult> GetOrCreateAsync(
-        string name, Guid categoryId, CancellationToken cancellationToken)
+        CreateIdeaTagRequest request, CancellationToken cancellationToken)
     {
         _logger.LogInformation(
             "Getting or creating idea tag with name {Name} under category {CategoryId}",
-            name, categoryId);
+            request.Name, request.CategoryId);
 
-        var result = await _ideaTagService.GetOrCreateAsync(name, categoryId, cancellationToken);
+        var result = await _ideaTagService.GetOrCreateAsync(request.Name, request.CategoryId, cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }

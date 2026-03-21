@@ -31,18 +31,8 @@ public class ApplicationDbContext(
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
 
-        // Apply soft delete filter globally
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
-        {
-            if (typeof(AuditableEntity).IsAssignableFrom(entityType.ClrType))
-            {
-                var method = typeof(ApplicationDbContext)
-                    .GetMethod(nameof(SetSoftDeleteFilter), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
-                    .MakeGenericMethod(entityType.ClrType);
-
-                method.Invoke(null, [modelBuilder]);
-            }
-        }
+        // Soft delete filters are applied via SoftDeleteConfiguration for each entity type
+        // No need to apply globally here, as each configuration already handles it
 
         var cascadeFKs = modelBuilder.Model
             .GetEntityTypes()
@@ -53,11 +43,6 @@ public class ApplicationDbContext(
             fk.DeleteBehavior = DeleteBehavior.Restrict;
     }
 
-    private static void SetSoftDeleteFilter<TEntity>(ModelBuilder modelBuilder)
-        where TEntity : AuditableEntity
-    {
-        modelBuilder.Entity<TEntity>().HasQueryFilter(e => !e.IsDeleted);
-    }
 
     public override Task<int> SaveChangesAsync(
         bool acceptAllChangesOnSuccess,

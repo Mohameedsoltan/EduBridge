@@ -26,11 +26,11 @@ public class IdeaCategoriesController(
 
     [HttpPost("get-or-create")]
     public async Task<IActionResult> GetOrCreateAsync(
-        [FromBody] string name, CancellationToken cancellationToken)
+        [FromBody] CreateIdeaCategoryRequest request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Getting or creating idea category with name {Name}", name);
+        logger.LogInformation("Getting or creating idea category with name {Name}", request.Name);
 
-        var result = await ideaCategoryService.GetOrCreateAsync(name, cancellationToken);
+        var result = await ideaCategoryService.GetOrCreateAsync(request, cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }

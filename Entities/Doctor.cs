@@ -1,4 +1,4 @@
-using EduBridge.Entities;
+namespace EduBridge.Entities;
 
 public class Doctor : AuditableEntity
 {

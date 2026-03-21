@@ -25,9 +25,9 @@ public class IdeaCategoryService(
     }
 
     public async Task<Result<Guid>> GetOrCreateAsync(
-        string name, CancellationToken cancellationToken = default)
+        CreateIdeaCategoryRequest request, CancellationToken cancellationToken = default)
     {
-        name = name.Trim().ToLowerInvariant();
+        var name = request.Name.Trim().ToLowerInvariant();
 
         var existing = await context.IdeaCategories
             .FirstOrDefaultAsync(c => c.Name == name, cancellationToken);
