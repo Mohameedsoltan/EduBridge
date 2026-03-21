@@ -47,11 +47,21 @@ public class DoctorsController(
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
+    [HttpGet("me/teams")]
+    [Authorize(Roles = DefaultRoles.Doctor)]
+    public async Task<IActionResult> GetSupervisedTeamsAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Fetching supervised teams for current doctor");
+
+        var result = await _doctorService.GetSupervisedTeamsAsync(cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+    }
 
     [HttpPost("")]
-    [Authorize(Roles = DefaultRoles.Doctor)]
+    [AllowAnonymous]
     public async Task<IActionResult> CreateAsync(
-        string currentUserId, [FromBody] CreateDoctorRequest request, CancellationToken cancellationToken)
+        [FromQuery] string currentUserId, [FromBody] CreateDoctorRequest request, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Creating doctor profile for current user");
 

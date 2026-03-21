@@ -1,9 +1,10 @@
 namespace EduBridge.Contracts.TA;
 
 public record TAResponse(
+    Guid Id,
     string UserId,
-    string FirstName,
-    string LastName,
+    string FullName,
+    string Email,
     string Department,
     string? AcademicTitle,
     string? OfficeLocation,

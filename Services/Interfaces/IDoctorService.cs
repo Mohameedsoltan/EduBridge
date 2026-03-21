@@ -1,5 +1,6 @@
 using EduBridge.Abstractions;
 using EduBridge.Contracts.Doctor;
+using EduBridge.Contracts.Team;
 
 namespace EduBridge.Services.Interfaces;
 
@@ -9,6 +10,7 @@ public interface IDoctorService
     Task<Result<IEnumerable<DoctorResponse>>> GetAllAsync(CancellationToken cancellationToken = default);
     Task<Result<DoctorResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<Result<IEnumerable<DoctorResponse>>> GetAvailableDoctorsAsync(CancellationToken cancellationToken = default);
+    Task<Result<IEnumerable<TeamResponse>>> GetSupervisedTeamsAsync(CancellationToken cancellationToken = default);
 
     // Commands
     Task<Result> CreateAsync(string currentUserId, CreateDoctorRequest request, CancellationToken cancellationToken = default);

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using EduBridge.Abstractions;
 using EduBridge.Abstractions.Consts;
 using EduBridge.Contracts.Doctor;
+using EduBridge.Contracts.Team;
 using EduBridge.Entities;
 using EduBridge.Errors;
 using EduBridge.Persistence;
@@ -16,8 +17,11 @@ namespace EduBridge.Services;
 public class DoctorService(
     ApplicationDbContext context,
     UserManager<ApplicationUser> userManager,
+    IHttpContextAccessor httpContextAccessor,
     IMapper mapper) : IDoctorService
 {
+    private string CurrentUserId => httpContextAccessor.HttpContext!.User
+        .FindFirstValue(ClaimTypes.NameIdentifier)!;
    public async Task<Result<IEnumerable<DoctorResponse>>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
@@ -53,6 +57,24 @@ public class DoctorService(
             .ToListAsync(cancellationToken);
 
         return Result.Success<IEnumerable<DoctorResponse>>(mapper.Map<IEnumerable<DoctorResponse>>(doctors));
+    }
+     public async Task<Result<IEnumerable<TeamResponse>>> GetSupervisedTeamsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var doctor = await context.Doctors
+            .FirstOrDefaultAsync(d => d.UserId == CurrentUserId, cancellationToken);
+
+        if (doctor is null)
+            return Result.Failure<IEnumerable<TeamResponse>>(DoctorErrors.DoctorNotFound);
+
+        var teams = await context.Teams
+            .AsNoTracking()
+            .Include(t => t.Members)
+            .Include(t => t.Leader)
+            .Where(t => t.DoctorId == doctor.Id)
+            .ToListAsync(cancellationToken);
+
+        return Result.Success(mapper.Map<IEnumerable<TeamResponse>>(teams));
     }
 
     public async Task<Result> CreateAsync(

@@ -25,6 +25,5 @@ public class ApplicationUser : IdentityUser
     public ICollection<UserSkill> Skills { get; set; } = [];
     public ICollection<TeamMember> Teams { get; set; } = [];
     public TeachingAssistant? TeachingAssistant { get; set; }
-    public Doctor? Doctor { get; set; }
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
 }
