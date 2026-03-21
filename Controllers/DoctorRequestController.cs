@@ -5,34 +5,32 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using EduBridge.Abstractions.Consts;
+
 namespace EduBridge.Controllers;
 
 [Route("[controller]")]
 [ApiController]
 [Authorize]
-[Authorize(Roles = DefaultRoles.Student)] // POST send request
-[Authorize(Roles = DefaultRoles.Doctor)] // PUT respond
 public class DoctorRequestsController(
     IDoctorRequestService doctorRequestService,
     ILogger<DoctorRequestsController> logger) : ControllerBase
 {
-    private readonly IDoctorRequestService _doctorRequestService = doctorRequestService;
-    private readonly ILogger<DoctorRequestsController> _logger = logger;
-
     [HttpPost("")]
+    [Authorize(Roles = DefaultRoles.Student)]
     public async Task<IActionResult> SendRequestAsync(
         [FromBody] SendDoctorRequestRequest request, CancellationToken cancellationToken)
     {
-        _logger.LogInformation(
+        logger.LogInformation(
             "Team {TeamId} is sending a doctor request to doctor {DoctorId}",
             request.TeamId, request.DoctorId);
 
-        var result = await _doctorRequestService.CreateRequestAsync(request, cancellationToken);
+        var result = await doctorRequestService.CreateRequestAsync(request, cancellationToken);
 
         return result.IsSuccess ? Ok() : result.ToProblem();
     }
 
     [HttpPut("{requestId:guid}/respond")]
+    [Authorize(Roles = DefaultRoles.Doctor)]
     public async Task<IActionResult> RespondToRequestAsync(
         [FromRoute] Guid requestId,
         [FromBody] RespondDoctorRequestDto request,
@@ -40,11 +38,11 @@ public class DoctorRequestsController(
     {
         var doctorUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Doctor {DoctorUserId} is responding to request {RequestId}",
             doctorUserId, requestId);
 
-        var result = await _doctorRequestService.RespondToRequestAsync(
+        var result = await doctorRequestService.RespondToRequestAsync(
             requestId, doctorUserId!, request, cancellationToken);
 
         return result.IsSuccess ? Ok() : result.ToProblem();
@@ -54,9 +52,9 @@ public class DoctorRequestsController(
     public async Task<IActionResult> GetTeamRequestsAsync(
         [FromRoute] Guid teamId, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Fetching doctor requests for team {TeamId}", teamId);
+        logger.LogInformation("Fetching doctor requests for team {TeamId}", teamId);
 
-        var result = await _doctorRequestService.GetTeamRequestsAsync(teamId, cancellationToken);
+        var result = await doctorRequestService.GetTeamRequestsAsync(teamId, cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
@@ -65,9 +63,9 @@ public class DoctorRequestsController(
     public async Task<IActionResult> GetDoctorRequestsAsync(
         [FromRoute] Guid doctorId, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Fetching requests received by doctor {DoctorId}", doctorId);
+        logger.LogInformation("Fetching requests received by doctor {DoctorId}", doctorId);
 
-        var result = await _doctorRequestService.GetDoctorRequestsAsync(doctorId, cancellationToken);
+        var result = await doctorRequestService.GetDoctorRequestsAsync(doctorId, cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }

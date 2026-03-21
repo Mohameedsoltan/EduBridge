@@ -2,5 +2,6 @@ namespace EduBridge.Contracts.Authentication;
 
 public record ConfirmEmailRequest(
     string UserId,
-    string Code
+    string Code,
+    string? Role = null
 );
