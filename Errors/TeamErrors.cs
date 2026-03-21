@@ -24,4 +24,12 @@ public static class TeamErrors
 
     public static readonly Error IdeaNotFound = new(
         "Team.IdeaNotFound", "Idea not found", StatusCodes.Status404NotFound);
+
+    public static readonly Error UserNotFound = new(
+        "Team.UserNotFound", "User not found", StatusCodes.Status404NotFound);
+
+    public static readonly Error UserNotStudentRole = new(
+        "Team.UserNotStudentRole", "Only students can be added to a team", StatusCodes.Status403Forbidden);
+        public static readonly Error AlreadyLeader = new(
+    "Team.AlreadyLeader", "This member is already the team leader", StatusCodes.Status409Conflict);
 }

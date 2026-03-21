@@ -1,15 +1,15 @@
+using EduBridge.Abstractions;
+using EduBridge.Abstractions.Consts;
 using EduBridge.Contracts.Team;
 using EduBridge.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using EduBridge.Abstractions.Consts;
-using EduBridge.Abstractions;
 namespace EduBridge.Controllers;
 
 [Route("[controller]")]
 [ApiController]
 [Authorize]
-[Authorize(Roles = DefaultRoles.Student)] 
+[Authorize(Roles = DefaultRoles.Student)]
 public class TeamsController(
     ITeamService teamService,
     ILogger<TeamsController> logger) : ControllerBase
@@ -112,27 +112,28 @@ public class TeamsController(
 
     [HttpPut("{id:guid}/status")]
     public async Task<IActionResult> ChangeStatusAsync(
-        [FromRoute] Guid id,
-        [FromBody] TeamStatus status,
-        CancellationToken cancellationToken)
+    [FromRoute] Guid id,
+    [FromBody] ChangeTeamStatusRequest request,
+    CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Changing status of team {TeamId} to {Status}", id, status);
+        _logger.LogInformation("Changing status of team {TeamId} to {Status}", id, request.Status);
 
-        var result = await _teamService.ChangeStatusAsync(id, status, cancellationToken);
+        var result = await _teamService.ChangeStatusAsync(id, request, cancellationToken);
 
         return result.IsSuccess ? Ok() : result.ToProblem();
     }
 
-    [HttpPut("{id:guid}/idea/{ideaId:guid}")]
-    public async Task<IActionResult> AssignIdeaAsync(
-        [FromRoute] Guid id,
-        [FromRoute] Guid ideaId,
-        CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("Assigning idea {IdeaId} to team {TeamId}", ideaId, id);
+    [HttpPut("{id:guid}/members/{userId}/assign-leader")]
+public async Task<IActionResult> AssignLeaderAsync(
+    [FromRoute] Guid id,
+    [FromRoute] string userId,
+    CancellationToken cancellationToken)
+{
+    _logger.LogInformation("Assigning user {UserId} as leader of team {TeamId}", userId, id);
 
-        var result = await _teamService.AssignIdeaAsync(id, ideaId, cancellationToken);
+    var result = await _teamService.AssignLeaderAsync(id, userId, cancellationToken);
 
-        return result.IsSuccess ? Ok() : result.ToProblem();
-    }
+    return result.IsSuccess ? Ok() : result.ToProblem();
+}
+
 }

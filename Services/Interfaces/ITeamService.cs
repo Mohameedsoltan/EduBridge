@@ -21,8 +21,6 @@ public interface ITeamService
     Task<Result> LeaveAsync(Guid id, CancellationToken cancellationToken = default);
 
     // Status
-    Task<Result> ChangeStatusAsync(Guid id, TeamStatus status, CancellationToken cancellationToken = default);
-
-    // Idea
-    Task<Result> AssignIdeaAsync(Guid teamId, Guid ideaId, CancellationToken cancellationToken = default);
-}
+    Task<Result> ChangeStatusAsync(Guid id, ChangeTeamStatusRequest request, CancellationToken cancellationToken = default);
+    Task<Result> AssignLeaderAsync(Guid id, string userId, CancellationToken cancellationToken = default);
+   }

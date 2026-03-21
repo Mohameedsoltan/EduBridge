@@ -7,6 +7,7 @@ using EduBridge.Errors;
 using EduBridge.Persistence;
 using EduBridge.Services.Interfaces;
 using MapsterMapper;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace EduBridge.Services;
@@ -15,8 +16,11 @@ public class TeamService(
     ApplicationDbContext context,
     INotificationService notificationService,
     IHttpContextAccessor httpContextAccessor,
+    UserManager<ApplicationUser> userManager,
     IMapper mapper) : ITeamService
 {
+    private readonly UserManager<ApplicationUser> userManager = userManager;
+
     private string CurrentUserId => httpContextAccessor.HttpContext!.User
         .FindFirstValue(ClaimTypes.NameIdentifier)!;
 
@@ -55,7 +59,7 @@ public class TeamService(
             Name = request.Name,
             Description = request.Description,
             LeaderId = CurrentUserId,
-            MaxMembers = TeamSettings.MaxMembers, 
+            MaxMembers = TeamSettings.MaxMembers,
             Status = TeamStatus.Open
         };
 
@@ -114,7 +118,7 @@ public class TeamService(
     }
 
     public async Task<Result> AddMemberAsync(
-        Guid id, string userId, CancellationToken cancellationToken = default)
+     Guid id, string userId, CancellationToken cancellationToken = default)
     {
         var team = await context.Teams
             .Include(t => t.Members)
@@ -125,6 +129,17 @@ public class TeamService(
 
         if (team.LeaderId != CurrentUserId)
             return Result.Failure(TeamErrors.NotTeamLeader);
+
+        // verify user exists and has Student role
+        var user = await userManager.FindByIdAsync(userId);
+
+        if (user is null)
+            return Result.Failure(UserErrors.UserNotFound);
+
+        var isStudent = await userManager.IsInRoleAsync(user, DefaultRoles.Student);
+
+        if (!isStudent)
+            return Result.Failure(TeamErrors.UserNotStudentRole);
 
         if (team.Members.Any(m => m.UserId == userId))
             return Result.Failure(TeamErrors.AlreadyMember);
@@ -155,7 +170,6 @@ public class TeamService(
 
         return Result.Success();
     }
-
     public async Task<Result> RemoveMemberAsync(
         Guid id, string userId, CancellationToken cancellationToken = default)
     {
@@ -213,7 +227,7 @@ public class TeamService(
     }
 
     public async Task<Result> ChangeStatusAsync(
-        Guid id, TeamStatus status, CancellationToken cancellationToken = default)
+    Guid id, ChangeTeamStatusRequest request, CancellationToken cancellationToken = default)
     {
         var team = await context.FindAsync<Team>([id], cancellationToken);
 
@@ -223,17 +237,18 @@ public class TeamService(
         if (team.LeaderId != CurrentUserId)
             return Result.Failure(TeamErrors.NotTeamLeader);
 
-        team.Status = status;
+        team.Status = request.Status;
 
         await context.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }
-
-    public async Task<Result> AssignIdeaAsync(
-        Guid teamId, Guid ideaId, CancellationToken cancellationToken = default)
+    public async Task<Result> AssignLeaderAsync(
+        Guid id, string userId, CancellationToken cancellationToken = default)
     {
-        var team = await context.FindAsync<Team>([teamId], cancellationToken);
+        var team = await context.Teams
+            .Include(t => t.Members)
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
         if (team is null || team.IsDeleted)
             return Result.Failure(TeamErrors.TeamNotFound);
@@ -241,17 +256,33 @@ public class TeamService(
         if (team.LeaderId != CurrentUserId)
             return Result.Failure(TeamErrors.NotTeamLeader);
 
-        var ideaExists = await context.Ideas
-            .AnyAsync(i => i.Id == ideaId, cancellationToken);
+        if (team.LeaderId == userId)
+            return Result.Failure(TeamErrors.AlreadyLeader);
 
-        if (!ideaExists)
-            return Result.Failure(TeamErrors.IdeaNotFound);
+        var newLeaderMember = team.Members.FirstOrDefault(m => m.UserId == userId);
 
-        team.IdeaId = ideaId;
-        team.Status = TeamStatus.IdeaSelection;
+        if (newLeaderMember is null)
+            return Result.Failure(TeamErrors.MemberNotFound);
+
+        // demote current leader to member
+        var currentLeaderMember = team.Members.FirstOrDefault(m => m.UserId == CurrentUserId);
+        if (currentLeaderMember is not null)
+            currentLeaderMember.Role = MemberRole.Member;
+
+        // promote new leader
+        newLeaderMember.Role = MemberRole.Leader;
+        team.LeaderId = userId;
 
         await context.SaveChangesAsync(cancellationToken);
 
+        await notificationService.SendAsync(
+            userId,
+            NotificationType.TeamMemberJoined,
+            $"You have been assigned as the leader of team {team.Name}",
+            team.Id,
+            cancellationToken);
+
         return Result.Success();
     }
+
 }

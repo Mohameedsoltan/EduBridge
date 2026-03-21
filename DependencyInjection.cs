@@ -1,7 +1,8 @@
 using System.Reflection;
 using System.Text;
-using EduBridge.Authentication;
+using System.Text.Json.Serialization;
 using EduBridge.Abstractions.Consts;
+using EduBridge.Authentication;
 using EduBridge.Entities;
 using EduBridge.Persistence;
 using EduBridge.Services;
@@ -28,8 +29,13 @@ public static class DependencyInjection
             services.AddControllers();
             services.AddServicesConfig();
             services.AddAuthConfig(config);
-            services.AddMapsterConfig();       
-            services.AddFluentValidationConfig(); 
+            services.AddMapsterConfig();
+            services.AddFluentValidationConfig();
+            services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 
             var connectionString = config.GetConnectionString("DefaultConnection")
                                    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
