@@ -15,4 +15,7 @@ public static class DoctorErrors
 
     public static readonly Error DoctorNotAvailable = new(
         "Doctor.NotAvailable", "This doctor has no available slots", StatusCodes.Status409Conflict);
+
+    public static readonly Error UserNotDoctorRole = new(
+        "Doctor.NotDoctorRole", "User does not have the Doctor role", StatusCodes.Status403Forbidden);
 }

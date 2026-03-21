@@ -1,4 +1,5 @@
 using EduBridge.Contracts.Doctor;
+using EduBridge.Entities;
 using Mapster;
 
 namespace EduBridge.Mapping;
@@ -9,5 +10,12 @@ public class DoctorMappingConfig : IRegister
     {
         config.NewConfig<Doctor, DoctorResponse>()
             .Map(dest => dest.FullName, src => $"{src.User.FirstName} {src.User.LastName}");
+
+        config.NewConfig<CreateDoctorRequest, Doctor>()
+            .Ignore(dest => dest.UserId)
+            .Ignore(dest => dest.AvailableTeams);
+
+        config.NewConfig<UpdateDoctorRequest, Doctor>()
+            .Ignore(dest => dest.AvailableTeams);
     }
 }

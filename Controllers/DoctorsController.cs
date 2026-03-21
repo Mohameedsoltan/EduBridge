@@ -1,16 +1,15 @@
+using EduBridge.Abstractions;
+using EduBridge.Abstractions.Consts;
 using EduBridge.Contracts.Doctor;
 using EduBridge.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using EduBridge.Abstractions.Consts;
-using EduBridge.Abstractions;
 
-namespace EduBridge.Controllers;
+namespace EduBridge.API.Controllers;
 
 [Route("[controller]")]
 [ApiController]
 [Authorize]
-[Authorize(Roles = DefaultRoles.Admin)]
 public class DoctorsController(
     IDoctorService doctorService,
     ILogger<DoctorsController> logger) : ControllerBase
@@ -50,10 +49,11 @@ public class DoctorsController(
     }
 
     [HttpPost("")]
+    [Authorize(Roles = DefaultRoles.Doctor)]
     public async Task<IActionResult> CreateAsync(
         [FromBody] CreateDoctorRequest request, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Creating a new doctor for user {UserId}", request.UserId);
+        _logger.LogInformation("Creating doctor profile for current user");
 
         var result = await _doctorService.CreateAsync(request, cancellationToken);
 
@@ -61,6 +61,7 @@ public class DoctorsController(
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = DefaultRoles.Doctor)]
     public async Task<IActionResult> UpdateAsync(
         [FromRoute] Guid id,
         [FromBody] UpdateDoctorRequest request,
@@ -74,6 +75,7 @@ public class DoctorsController(
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = DefaultRoles.Admin)]
     public async Task<IActionResult> DeleteAsync(
         [FromRoute] Guid id, CancellationToken cancellationToken)
     {
