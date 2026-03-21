@@ -7,10 +7,10 @@ public static class SkillErrors
     public static readonly Error SkillNotFound = new(
         "Skill.NotFound",
         "The skill with the specified ID was not found or has been deleted.",
-        404);
+        StatusCodes.Status404NotFound);
 
     public static readonly Error DuplicateSkillName = new(
         "Skill.DuplicateName",
         "A skill with the same name already exists.",
-        409);
+        StatusCodes.Status409Conflict);
 }

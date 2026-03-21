@@ -2,41 +2,47 @@ using EduBridge;
 using EduBridge.Persistence.Seed;
 using Serilog;
 
-var builder = WebApplication.CreateBuilder(args);
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
-// Add services to the container.
-
-builder.Services.AddDependencies(builder.Configuration);
-
-builder.Host.UseSerilog((context, configuration) =>
-    configuration.ReadFrom.Configuration(context.Configuration));
-
-var app = builder.Build();
-
-using (var scope = app.Services.CreateScope())
+try
 {
-    var services = scope.ServiceProvider;
+    var builder = WebApplication.CreateBuilder(args);
 
-    await RoleSeeder.SeedRolesAsync(services);
-    await UserSeeder.SeedAdminAsync(services);
-    await UserRoleSeeder.SeedUserRolesAsync(services);
+    builder.Services.AddDependencies(builder.Configuration);
+
+    builder.Host.UseSerilog((context, configuration) =>
+        configuration.ReadFrom.Configuration(context.Configuration));
+
+    var app = builder.Build();
+
+    using (var scope = app.Services.CreateScope())
+    {
+        var services = scope.ServiceProvider;
+
+        await RoleSeeder.SeedRolesAsync(services);
+        await UserSeeder.SeedAdminAsync(services);
+        await UserRoleSeeder.SeedUserRolesAsync(services);
+    }
+
+    if (app.Environment.IsDevelopment())
+        app.MapOpenApi();
+
+    app.UseSerilogRequestLogging();
+    app.UseHttpsRedirection();
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.UseStaticFiles();
+    app.MapControllers();
+
+    app.Run();
 }
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+catch (Exception ex)
 {
-    app.MapOpenApi();
+    Log.Fatal(ex, "Application terminated unexpectedly");
 }
-
-app.UseSerilogRequestLogging();
-
-app.UseHttpsRedirection();
-
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.UseStaticFiles();
-
-app.MapControllers();
-
-app.Run();
+finally
+{
+    Log.CloseAndFlush();
+}

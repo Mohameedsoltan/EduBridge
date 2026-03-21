@@ -1,3 +1,4 @@
+using EduBridge.Abstractions.Consts;
 using Microsoft.AspNetCore.Identity;
 
 namespace EduBridge.Entities;

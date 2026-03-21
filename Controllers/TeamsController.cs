@@ -1,5 +1,4 @@
 using EduBridge.Contracts.Team;
-using EduBridge.Entities;
 using EduBridge.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

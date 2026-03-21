@@ -234,7 +234,7 @@ public class UserService(
         var existingUser = await userManager.FindByEmailAsync(request.Email);
 
         if (existingUser is not null)
-            return Result.Failure(UserErrors.DuplicateEmail);
+            return Result.Failure(UserErrors.DuplicatedEmail);
 
         var user = new ApplicationUser
         {

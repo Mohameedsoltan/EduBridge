@@ -12,6 +12,7 @@ using Mapster;
 using MapsterMapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SharpGrip.FluentValidation.AutoValidation.Mvc.Extensions;
@@ -108,6 +109,8 @@ public static class DependencyInjection
 
         private void AddServicesConfig()
         {
+            services.AddScoped<IAuthService, AuthService>();
+            services.AddScoped<IEmailSender, EmailService>();
             services.AddScoped<ISkillService, SkillService>();
             services.AddScoped<IIdeaCategoryService, IdeaCategoryService>();
             services.AddScoped<IIdeaTagService, IdeaTagService>();

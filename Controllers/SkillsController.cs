@@ -9,55 +9,53 @@ namespace EduBridge.Controllers;
 [Route("[controller]")]
 [ApiController]
 [Authorize]
-[Authorize(Roles = DefaultRoles.Admin)]
 public class SkillsController(
     ISkillService skillService,
     ILogger<SkillsController> logger) : ControllerBase
 {
-    private readonly ISkillService _skillService = skillService;
-    private readonly ILogger<SkillsController> _logger = logger;
-
     [HttpGet("")]
     public async Task<IActionResult> GetAllAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Fetching all skills");
+        logger.LogInformation("Fetching all skills");
 
-        var result = await _skillService.GetAllAsync(cancellationToken);
+        var result = await skillService.GetAllAsync(cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
 
     [HttpPost("get-or-create")]
     public async Task<IActionResult> GetOrCreateAsync(
-        [FromBody] string skillName, CancellationToken cancellationToken)
+        [FromBody] CreateSkillRequest request, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Getting or creating skill with name {SkillName}", skillName);
+        logger.LogInformation("Getting or creating skill with name {SkillName}", request.Name);
 
-        var result = await _skillService.GetOrCreateAsync(skillName, cancellationToken);
+        var result = await skillService.GetOrCreateAsync(request.Name, cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = DefaultRoles.Admin)]
     public async Task<IActionResult> UpdateAsync(
         [FromRoute] Guid id,
         [FromBody] UpdateSkillRequest request,
         CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Updating skill {SkillId}", id);
+        logger.LogInformation("Updating skill {SkillId}", id);
 
-        var result = await _skillService.UpdateAsync(id, request, cancellationToken);
+        var result = await skillService.UpdateAsync(id, request, cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = DefaultRoles.Admin)]
     public async Task<IActionResult> DeleteAsync(
         [FromRoute] Guid id, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Deleting skill {SkillId}", id);
+        logger.LogInformation("Deleting skill {SkillId}", id);
 
-        var result = await _skillService.DeleteAsync(id, cancellationToken);
+        var result = await skillService.DeleteAsync(id, cancellationToken);
 
         return result.IsSuccess ? Ok() : result.ToProblem();
     }

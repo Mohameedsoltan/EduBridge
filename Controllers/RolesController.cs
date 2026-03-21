@@ -14,15 +14,12 @@ public class RolesController(
     IRoleService roleService,
     ILogger<RolesController> logger) : ControllerBase
 {
-    private readonly IRoleService _roleService = roleService;
-    private readonly ILogger<RolesController> _logger = logger;
-
     [HttpGet("")]
     public async Task<IActionResult> GetAllRolesAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Fetching all roles");
+        logger.LogInformation("Fetching all roles");
 
-        var result = await _roleService.GetAllRolesAsync(cancellationToken);
+        var result = await roleService.GetAllRolesAsync(cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
@@ -31,9 +28,9 @@ public class RolesController(
     public async Task<IActionResult> GetRoleByIdAsync(
         [FromRoute] string roleId, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Fetching role {RoleId}", roleId);
+        logger.LogInformation("Fetching role {RoleId}", roleId);
 
-        var result = await _roleService.GetRoleByIdAsync(roleId, cancellationToken);
+        var result = await roleService.GetRoleByIdAsync(roleId, cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
@@ -42,9 +39,9 @@ public class RolesController(
     public async Task<IActionResult> CreateRoleAsync(
         [FromBody] CreateRoleRequest request, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Creating role {RoleName}", request.Name);
+        logger.LogInformation("Creating role {RoleName}", request.Name);
 
-        var result = await _roleService.CreateRoleAsync(request, cancellationToken);
+        var result = await roleService.CreateRoleAsync(request, cancellationToken);
 
         return result.IsSuccess ? Ok() : result.ToProblem();
     }
@@ -55,9 +52,9 @@ public class RolesController(
         [FromBody] UpdateRoleRequest request,
         CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Updating role {RoleId}", roleId);
+        logger.LogInformation("Updating role {RoleId}", roleId);
 
-        var result = await _roleService.UpdateRoleAsync(roleId, request, cancellationToken);
+        var result = await roleService.UpdateRoleAsync(roleId, request, cancellationToken);
 
         return result.IsSuccess ? Ok() : result.ToProblem();
     }
@@ -66,9 +63,9 @@ public class RolesController(
     public async Task<IActionResult> DeleteRoleAsync(
         [FromRoute] string roleId, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Deleting role {RoleId}", roleId);
+        logger.LogInformation("Deleting role {RoleId}", roleId);
 
-        var result = await _roleService.DeleteRoleAsync(roleId, cancellationToken);
+        var result = await roleService.DeleteRoleAsync(roleId, cancellationToken);
 
         return result.IsSuccess ? Ok() : result.ToProblem();
     }
@@ -77,9 +74,9 @@ public class RolesController(
     public async Task<IActionResult> GetUserRolesAsync(
         [FromRoute] string userId, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Fetching roles for user {UserId}", userId);
+        logger.LogInformation("Fetching roles for user {UserId}", userId);
 
-        var result = await _roleService.GetUserRolesAsync(userId, cancellationToken);
+        var result = await roleService.GetUserRolesAsync(userId, cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
@@ -88,9 +85,9 @@ public class RolesController(
     public async Task<IActionResult> AssignRoleToUserAsync(
         [FromBody] AssignRoleRequest request, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Assigning role {RoleName} to user {UserId}", request.RoleName, request.UserId);
+        logger.LogInformation("Assigning role {RoleName} to user {UserId}", request.RoleName, request.UserId);
 
-        var result = await _roleService.AssignRoleToUserAsync(request, cancellationToken);
+        var result = await roleService.AssignRoleToUserAsync(request, cancellationToken);
 
         return result.IsSuccess ? Ok() : result.ToProblem();
     }
@@ -99,9 +96,9 @@ public class RolesController(
     public async Task<IActionResult> RemoveRoleFromUserAsync(
         [FromBody] AssignRoleRequest request, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Removing role {RoleName} from user {UserId}", request.RoleName, request.UserId);
+        logger.LogInformation("Removing role {RoleName} from user {UserId}", request.RoleName, request.UserId);
 
-        var result = await _roleService.RemoveRoleFromUserAsync(request, cancellationToken);
+        var result = await roleService.RemoveRoleFromUserAsync(request, cancellationToken);
 
         return result.IsSuccess ? Ok() : result.ToProblem();
     }

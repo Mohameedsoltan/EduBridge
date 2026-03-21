@@ -45,7 +45,7 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
 
         RuleFor(x => x.Role)
             .NotEmpty().WithMessage("Role is required")
-            .Must(r => r == DefaultRoles.Student || r == DefaultRoles.TA)
+            .Must(r => r is DefaultRoles.Student or DefaultRoles.TA or DefaultRoles.Doctor)
             .WithMessage("Invalid role");
     }
 }

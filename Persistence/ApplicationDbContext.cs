@@ -9,8 +9,6 @@ public class ApplicationDbContext(
     DbContextOptions<ApplicationDbContext> options,
     IHttpContextAccessor httpContextAccessor) : IdentityDbContext<ApplicationUser, ApplicationRole, string>(options)
 {
-    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
-
     public DbSet<Team> Teams { get; set; } = null!;
     public DbSet<TeamMember> TeamMembers { get; set; } = null!;
     public DbSet<JoinRequest> JoinRequests { get; set; } = null!;
@@ -33,6 +31,19 @@ public class ApplicationDbContext(
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
 
+        // Apply soft delete filter globally
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(AuditableEntity).IsAssignableFrom(entityType.ClrType))
+            {
+                var method = typeof(ApplicationDbContext)
+                    .GetMethod(nameof(SetSoftDeleteFilter), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
+                    .MakeGenericMethod(entityType.ClrType);
+
+                method.Invoke(null, [modelBuilder]);
+            }
+        }
+
         var cascadeFKs = modelBuilder.Model
             .GetEntityTypes()
             .SelectMany(t => t.GetForeignKeys())
@@ -40,6 +51,12 @@ public class ApplicationDbContext(
 
         foreach (var fk in cascadeFKs)
             fk.DeleteBehavior = DeleteBehavior.Restrict;
+    }
+
+    private static void SetSoftDeleteFilter<TEntity>(ModelBuilder modelBuilder)
+        where TEntity : AuditableEntity
+    {
+        modelBuilder.Entity<TEntity>().HasQueryFilter(e => !e.IsDeleted);
     }
 
     public override Task<int> SaveChangesAsync(
@@ -50,7 +67,7 @@ public class ApplicationDbContext(
 
         foreach (var entityEntry in entries)
         {
-            var currentUserId = _httpContextAccessor.HttpContext?.User.GetUserId();
+            var currentUserId = httpContextAccessor.HttpContext?.User.GetUserId();
 
             if (entityEntry.State == EntityState.Added)
             {

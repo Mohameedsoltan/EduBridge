@@ -14,17 +14,14 @@ public class NotificationsController(
     INotificationService notificationService,
     ILogger<NotificationsController> logger) : ControllerBase
 {
-    private readonly INotificationService _notificationService = notificationService;
-    private readonly ILogger<NotificationsController> _logger = logger;
-
     private string CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
     [HttpGet("")]
     public async Task<IActionResult> GetUserNotificationsAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Fetching notifications for user {UserId}", CurrentUserId);
+        logger.LogInformation("Fetching notifications for user {UserId}", CurrentUserId);
 
-        var result = await _notificationService.GetUserNotificationsAsync(CurrentUserId, cancellationToken);
+        var result = await notificationService.GetUserNotificationsAsync(CurrentUserId, cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
@@ -32,9 +29,9 @@ public class NotificationsController(
     [HttpGet("unread-count")]
     public async Task<IActionResult> GetUnreadCountAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Fetching unread notification count for user {UserId}", CurrentUserId);
+        logger.LogInformation("Fetching unread notification count for user {UserId}", CurrentUserId);
 
-        var result = await _notificationService.GetUnreadCountAsync(CurrentUserId, cancellationToken);
+        var result = await notificationService.GetUnreadCountAsync(CurrentUserId, cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
@@ -43,9 +40,9 @@ public class NotificationsController(
     public async Task<IActionResult> MarkAsReadAsync(
         [FromRoute] Guid id, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Marking notification {NotificationId} as read", id);
+        logger.LogInformation("Marking notification {NotificationId} as read", id);
 
-        var result = await _notificationService.MarkAsReadAsync(id, cancellationToken);
+        var result = await notificationService.MarkAsReadAsync(id, cancellationToken);
 
         return result.IsSuccess ? Ok() : result.ToProblem();
     }
@@ -53,9 +50,9 @@ public class NotificationsController(
     [HttpPut("mark-all-as-read")]
     public async Task<IActionResult> MarkAllAsReadAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Marking all notifications as read for user {UserId}", CurrentUserId);
+        logger.LogInformation("Marking all notifications as read for user {UserId}", CurrentUserId);
 
-        var result = await _notificationService.MarkAllAsReadAsync(CurrentUserId, cancellationToken);
+        var result = await notificationService.MarkAllAsReadAsync(CurrentUserId, cancellationToken);
 
         return result.IsSuccess ? Ok() : result.ToProblem();
     }

@@ -2,10 +2,10 @@
 
 namespace EduBridge.Errors;
 
-public record UserErrors
+public static class UserErrors
     {
-    public static readonly Error InvalidCredintials =
-        new("User.InvalidCredintials","Invalid email/password",StatusCodes.Status401Unauthorized);
+    public static readonly Error InvalidCredentials =
+        new("User.InvalidCredentials","Invalid email/password",StatusCodes.Status401Unauthorized);
     
     public static readonly Error DisabledUser =
         new("User.DisabledUser","Disabled user, please contact your admin",StatusCodes.Status401Unauthorized);
@@ -36,11 +36,7 @@ public record UserErrors
 
     public static readonly Error InvalidRoles =
      new("Role.InvalidRoles","Invalid roles",StatusCodes.Status400BadRequest);
-
-
-    public static readonly Error DuplicateEmail = new(
-        "User.DuplicateEmail", "A user with this email already exists", StatusCodes.Status409Conflict);
-
+    
     public static readonly Error PasswordMismatch = new(
         "User.PasswordMismatch", "Passwords do not match", StatusCodes.Status400BadRequest);
 

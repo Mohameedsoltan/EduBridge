@@ -14,15 +14,12 @@ public class IdeaCategoriesController(
     IIdeaCategoryService ideaCategoryService,
     ILogger<IdeaCategoriesController> logger) : ControllerBase
 {
-    private readonly IIdeaCategoryService _ideaCategoryService = ideaCategoryService;
-    private readonly ILogger<IdeaCategoriesController> _logger = logger;
-
     [HttpGet("")]
     public async Task<IActionResult> GetAllAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Fetching all idea categories");
+        logger.LogInformation("Fetching all idea categories");
 
-        var result = await _ideaCategoryService.GetAllAsync(cancellationToken);
+        var result = await ideaCategoryService.GetAllAsync(cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
@@ -31,9 +28,9 @@ public class IdeaCategoriesController(
     public async Task<IActionResult> GetOrCreateAsync(
         [FromBody] string name, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Getting or creating idea category with name {Name}", name);
+        logger.LogInformation("Getting or creating idea category with name {Name}", name);
 
-        var result = await _ideaCategoryService.GetOrCreateAsync(name, cancellationToken);
+        var result = await ideaCategoryService.GetOrCreateAsync(name, cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
@@ -44,9 +41,9 @@ public class IdeaCategoriesController(
         [FromBody] UpdateIdeaCategoryRequest request,
         CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Updating idea category with ID {CategoryId}", id);
+        logger.LogInformation("Updating idea category with ID {CategoryId}", id);
 
-        var result = await _ideaCategoryService.UpdateAsync(id, request, cancellationToken);
+        var result = await ideaCategoryService.UpdateAsync(id, request, cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
@@ -55,9 +52,9 @@ public class IdeaCategoriesController(
     public async Task<IActionResult> DeleteAsync(
         [FromRoute] Guid id, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Deleting idea category with ID {CategoryId}", id);
+        logger.LogInformation("Deleting idea category with ID {CategoryId}", id);
 
-        var result = await _ideaCategoryService.DeleteAsync(id, cancellationToken);
+        var result = await ideaCategoryService.DeleteAsync(id, cancellationToken);
 
         return result.IsSuccess ? Ok() : result.ToProblem();
     }
