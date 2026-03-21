@@ -11,7 +11,7 @@ public interface IDoctorService
     Task<Result<IEnumerable<DoctorResponse>>> GetAvailableDoctorsAsync(CancellationToken cancellationToken = default);
 
     // Commands
-    Task<Result> CreateAsync(CreateDoctorRequest request, CancellationToken cancellationToken = default);
+    Task<Result> CreateAsync(string currentUserId, CreateDoctorRequest request, CancellationToken cancellationToken = default);
     Task<Result> UpdateAsync(Guid id, UpdateDoctorRequest request, CancellationToken cancellationToken = default);
     Task<Result> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

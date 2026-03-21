@@ -1,5 +1,6 @@
 using EduBridge;
 using EduBridge.Persistence.Seed;
+using Scalar.AspNetCore;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()

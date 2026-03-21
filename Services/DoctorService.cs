@@ -16,13 +16,9 @@ namespace EduBridge.Services;
 public class DoctorService(
     ApplicationDbContext context,
     UserManager<ApplicationUser> userManager,
-    IHttpContextAccessor httpContextAccessor,
     IMapper mapper) : IDoctorService
 {
-    private string CurrentUserId => httpContextAccessor.HttpContext!.User
-        .FindFirstValue(ClaimTypes.NameIdentifier)!;
-
-    public async Task<Result<IEnumerable<DoctorResponse>>> GetAllAsync(
+   public async Task<Result<IEnumerable<DoctorResponse>>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
         var doctors = await context.Doctors
@@ -60,9 +56,9 @@ public class DoctorService(
     }
 
     public async Task<Result> CreateAsync(
-        CreateDoctorRequest request, CancellationToken cancellationToken = default)
+        string currentUserId, CreateDoctorRequest request, CancellationToken cancellationToken = default)
     {
-        var user = await userManager.FindByIdAsync(CurrentUserId);
+        var user = await userManager.FindByIdAsync(currentUserId);
 
         if (user is null)
             return Result.Failure(DoctorErrors.UserNotFound);
@@ -73,13 +69,13 @@ public class DoctorService(
             return Result.Failure(DoctorErrors.UserNotDoctorRole);
 
         var alreadyHasProfile = await context.Doctors
-            .AnyAsync(d => d.UserId == CurrentUserId, cancellationToken);
+            .AnyAsync(d => d.UserId == currentUserId, cancellationToken);
 
         if (alreadyHasProfile)
             return Result.Failure(DoctorErrors.UserAlreadyDoctor);
 
         var doctor = request.Adapt<Doctor>();
-        doctor.UserId = CurrentUserId;
+        doctor.UserId = currentUserId;
         doctor.AvailableTeams = request.MaxTeams;
 
         await context.Doctors.AddAsync(doctor, cancellationToken);

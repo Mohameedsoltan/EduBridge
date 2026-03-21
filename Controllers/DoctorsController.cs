@@ -51,11 +51,11 @@ public class DoctorsController(
     [HttpPost("")]
     [Authorize(Roles = DefaultRoles.Doctor)]
     public async Task<IActionResult> CreateAsync(
-        [FromBody] CreateDoctorRequest request, CancellationToken cancellationToken)
+        string currentUserId, [FromBody] CreateDoctorRequest request, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Creating doctor profile for current user");
 
-        var result = await _doctorService.CreateAsync(request, cancellationToken);
+        var result = await _doctorService.CreateAsync(currentUserId, request, cancellationToken);
 
         return result.IsSuccess ? Ok() : result.ToProblem();
     }

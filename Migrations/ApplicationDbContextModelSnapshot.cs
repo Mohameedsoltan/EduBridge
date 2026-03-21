@@ -68,7 +68,8 @@ namespace EduBridge.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId")
+                        .IsUnique();
 
                     b.ToTable("Doctors");
                 });
@@ -124,6 +125,9 @@ namespace EduBridge.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DoctorId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
@@ -196,6 +200,8 @@ namespace EduBridge.Migrations
                         .HasColumnType("nvarchar(256)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DoctorId");
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
@@ -561,7 +567,7 @@ namespace EduBridge.Migrations
                     b.ToTable("Skills");
                 });
 
-            modelBuilder.Entity("EduBridge.Entities.TARequest", b =>
+            modelBuilder.Entity("EduBridge.Entities.TaRequest", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -908,8 +914,8 @@ namespace EduBridge.Migrations
             modelBuilder.Entity("Doctor", b =>
                 {
                     b.HasOne("EduBridge.Entities.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
+                        .WithOne()
+                        .HasForeignKey("Doctor", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -918,6 +924,10 @@ namespace EduBridge.Migrations
 
             modelBuilder.Entity("EduBridge.Entities.ApplicationUser", b =>
                 {
+                    b.HasOne("Doctor", "Doctor")
+                        .WithMany()
+                        .HasForeignKey("DoctorId");
+
                     b.OwnsMany("EduBridge.Entities.RefreshToken", "RefreshTokens", b1 =>
                         {
                             b1.Property<string>("ApplicationUserId")
@@ -953,6 +963,8 @@ namespace EduBridge.Migrations
                             b1.WithOwner()
                                 .HasForeignKey("ApplicationUserId");
                         });
+
+                    b.Navigation("Doctor");
 
                     b.Navigation("RefreshTokens");
                 });
@@ -1067,7 +1079,7 @@ namespace EduBridge.Migrations
                     b.Navigation("Team");
                 });
 
-            modelBuilder.Entity("EduBridge.Entities.TARequest", b =>
+            modelBuilder.Entity("EduBridge.Entities.TaRequest", b =>
                 {
                     b.HasOne("EduBridge.Entities.TeachingAssistant", "RespondedByTA")
                         .WithMany()
