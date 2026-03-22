@@ -11,7 +11,7 @@ public static class RatingErrors
         "Rating.AlreadyExists", "This team has already submitted a rating", StatusCodes.Status409Conflict);
 
     public static readonly Error InvalidScore = new(
-        "Rating.InvalidScore", "Score must be between 1 and 5", StatusCodes.Status400BadRequest);
+        "Rating.InvalidScore", "Score must be between 1 and 100", StatusCodes.Status400BadRequest);
 
     public static readonly Error TeamHasNoTa = new(
         "Rating.TeamHasNoTa", "This team does not have an assigned TA", StatusCodes.Status400BadRequest);

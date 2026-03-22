@@ -58,13 +58,11 @@ public class RatingService(
     public async Task<Result> SubmitAsync(
         Guid teamId, SubmitRatingRequest request, CancellationToken cancellationToken = default)
     {
-        if (request.Score is < 1 or > 5)
-            return Result.Failure(RatingErrors.InvalidScore);
 
         var team = await context.Teams
             .FirstOrDefaultAsync(t => t.Id == teamId, cancellationToken);
 
-        if (team is null)
+        if (team is null)   
             return Result.Failure(RatingErrors.RatingNotFound);
 
         if (team.TaId is null)
