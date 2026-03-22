@@ -1,10 +1,11 @@
+using System.Security.Claims;
 using EduBridge.Abstractions;
+using EduBridge.Abstractions.Consts;
 using EduBridge.Contracts.Doctor;
 using EduBridge.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
-using EduBridge.Abstractions.Consts;
+using Serilog;
 
 namespace EduBridge.Controllers;
 
@@ -29,26 +30,46 @@ public class DoctorRequestsController(
         return result.IsSuccess ? Ok() : result.ToProblem();
     }
 
-    [HttpPut("{requestId:guid}/respond")]
+    [HttpPut("{requestId:guid}/cancel")]
+    public async Task<IActionResult> CancelRequestAsync(
+        [FromRoute] Guid requestId, CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Cancelling doctor request {RequestId}", requestId);
+
+        var result = await doctorRequestService.CancelRequestAsync(requestId, cancellationToken);
+
+        return result.IsSuccess ? Ok() : result.ToProblem();
+    }
+    [HttpPut("{requestId:guid}/approve")]
     [Authorize(Roles = DefaultRoles.Doctor)]
-    public async Task<IActionResult> RespondToRequestAsync(
+    public async Task<IActionResult> ApproveAsync(
+    [FromRoute] Guid requestId,
+    [FromBody] string? responseMessage,
+    CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Approving doctor request {RequestId}", requestId);
+
+        var result = await doctorRequestService.ApproveAsync(requestId, responseMessage, cancellationToken);
+
+        return result.IsSuccess ? Ok() : result.ToProblem();
+    }
+
+    [HttpPut("{requestId:guid}/reject")]
+    [Authorize(Roles = DefaultRoles.Doctor)]
+    public async Task<IActionResult> RejectAsync(
         [FromRoute] Guid requestId,
-        [FromBody] RespondDoctorRequestDto request,
+        [FromBody] string? responseMessage,
         CancellationToken cancellationToken)
     {
-        var doctorUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        logger.LogInformation("Rejecting doctor request {RequestId}", requestId);
 
-        logger.LogInformation(
-            "Doctor {DoctorUserId} is responding to request {RequestId}",
-            doctorUserId, requestId);
-
-        var result = await doctorRequestService.RespondToRequestAsync(
-            requestId, doctorUserId!, request, cancellationToken);
+        var result = await doctorRequestService.RejectAsync(requestId, responseMessage, cancellationToken);
 
         return result.IsSuccess ? Ok() : result.ToProblem();
     }
 
     [HttpGet("team/{teamId:guid}")]
+    [Authorize(Roles = DefaultRoles.Student)]
     public async Task<IActionResult> GetTeamRequestsAsync(
         [FromRoute] Guid teamId, CancellationToken cancellationToken)
     {
@@ -60,6 +81,7 @@ public class DoctorRequestsController(
     }
 
     [HttpGet("doctor/{doctorId:guid}")]
+    [Authorize(Roles = DefaultRoles.Doctor)]
     public async Task<IActionResult> GetDoctorRequestsAsync(
         [FromRoute] Guid doctorId, CancellationToken cancellationToken)
     {

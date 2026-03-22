@@ -24,33 +24,36 @@ public class TeamService(
     private string CurrentUserId => httpContextAccessor.HttpContext!.User
         .FindFirstValue(ClaimTypes.NameIdentifier)!;
 
-    public async Task<Result<TeamResponse>> GetByIdAsync(
-        Guid id, CancellationToken cancellationToken = default)
-    {
-        var team = await context.Teams
-            .AsNoTracking()
-            .Include(t => t.Members)
-            .Include(t => t.Leader)
-            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+   public async Task<Result<TeamResponse>> GetByIdAsync(
+    Guid id, CancellationToken cancellationToken = default)
+{
+    var team = await context.Teams
+        .AsNoTracking()
+        .Include(t => t.Members)
+        .Include(t => t.Leader)
+        .Include(t => t.Ta).ThenInclude(ta => ta.User)
+        .Include(t => t.Doctor).ThenInclude(d => d.User)
+        .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
-        if (team is null)
-            return Result.Failure<TeamResponse>(TeamErrors.TeamNotFound);
+    if (team is null)
+        return Result.Failure<TeamResponse>(TeamErrors.TeamNotFound);
 
-        return Result.Success(mapper.Map<TeamResponse>(team));
-    }
+    return Result.Success(mapper.Map<TeamResponse>(team));
+}
 
-    public async Task<Result<IEnumerable<TeamResponse>>> GetAllAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var teams = await context.Teams
-            .AsNoTracking()
-            .Include(t => t.Members)
-            .Include(t => t.Leader)
-            .ToListAsync(cancellationToken);
+public async Task<Result<IEnumerable<TeamResponse>>> GetAllAsync(
+    CancellationToken cancellationToken = default)
+{
+    var teams = await context.Teams
+        .AsNoTracking()
+        .Include(t => t.Members)
+        .Include(t => t.Leader)
+        .Include(t => t.Ta).ThenInclude(ta => ta.User)
+        .Include(t => t.Doctor).ThenInclude(d => d.User)
+        .ToListAsync(cancellationToken);
 
-        return Result.Success(mapper.Map<IEnumerable<TeamResponse>>(teams));
-    }
-
+    return Result.Success(mapper.Map<IEnumerable<TeamResponse>>(teams));
+}
     public async Task<Result<TeamResponse>> CreateAsync(
         CreateTeamRequest request, CancellationToken cancellationToken = default)
     {

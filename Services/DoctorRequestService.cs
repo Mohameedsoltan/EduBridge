@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using EduBridge.Abstractions;
 using EduBridge.Abstractions.Consts;
 using EduBridge.Contracts.Doctor;
@@ -13,8 +14,11 @@ namespace EduBridge.Services;
 public class DoctorRequestService(
     ApplicationDbContext context,
     INotificationService notificationService,
+     IHttpContextAccessor httpContextAccessor,
     IMapper mapper) : IDoctorRequestService
 {
+     private string CurrentUserId => httpContextAccessor.HttpContext!.User
+        .FindFirstValue(ClaimTypes.NameIdentifier)!;
     public async Task<Result> CreateRequestAsync(
         SendDoctorRequestRequest request, CancellationToken cancellationToken = default)
     {
@@ -56,10 +60,33 @@ public class DoctorRequestService(
 
         return Result.Success();
     }
+    // ... existing methods
 
-    public async Task<Result> RespondToRequestAsync(
-        Guid requestId, string doctorUserId, RespondDoctorRequestDto request,
-        CancellationToken cancellationToken = default)
+    public async Task<Result> CancelRequestAsync(
+        Guid requestId, CancellationToken cancellationToken = default)
+    {
+        var request = await context.DoctorRequests
+            .Include(r => r.Team)
+            .FirstOrDefaultAsync(r => r.Id == requestId, cancellationToken);
+
+        if (request is null)
+            return Result.Failure(DoctorRequestErrors.RequestNotFound);
+
+        if (request.Team.LeaderId != CurrentUserId)
+            return Result.Failure(TeamErrors.NotTeamLeader);
+
+        if (request.Status != RequestStatus.Pending)
+            return Result.Failure(DoctorRequestErrors.RequestNotPending);
+
+        request.Status = RequestStatus.Cancelled;
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        return Result.Success();
+    }
+
+     public async Task<Result> ApproveAsync(
+        Guid requestId, string? responseMessage, CancellationToken cancellationToken = default)
     {
         var doctorRequest = await context.DoctorRequests
             .Include(r => r.Doctor)
@@ -69,24 +96,62 @@ public class DoctorRequestService(
         if (doctorRequest is null)
             return Result.Failure(DoctorRequestErrors.RequestNotFound);
 
-        if (doctorRequest.Doctor.UserId != doctorUserId)
+        if (doctorRequest.Doctor.UserId != CurrentUserId)
             return Result.Failure(DoctorRequestErrors.Unauthorized);
 
         if (doctorRequest.Status != RequestStatus.Pending)
             return Result.Failure(DoctorRequestErrors.RequestNotPending);
 
-        doctorRequest.Status = request.IsApproved ? RequestStatus.Approved : RequestStatus.Rejected;
-        doctorRequest.ResponseMessage = request.ResponseMessage;
+        doctorRequest.Status = RequestStatus.Approved;
+        doctorRequest.ResponseMessage = responseMessage;
         doctorRequest.RespondedAt = DateTime.UtcNow;
         doctorRequest.RespondedByDoctorId = doctorRequest.DoctorId;
 
-        if (request.IsApproved)
-        {
-            doctorRequest.Doctor.AvailableTeams--;
-            doctorRequest.Team.DoctorId = doctorRequest.DoctorId;
-        }
+        doctorRequest.Doctor.AvailableTeams--;
+        doctorRequest.Team.DoctorId = doctorRequest.DoctorId;
 
         await context.SaveChangesAsync(cancellationToken);
+
+        await notificationService.SendAsync(
+            doctorRequest.Team.LeaderId,
+            NotificationType.DoctorRequestReceived,
+            $"Your request for doctor supervision has been accepted",
+            doctorRequest.Id,
+            cancellationToken);
+
+        return Result.Success();
+    }
+
+    public async Task<Result> RejectAsync(
+        Guid requestId, string? responseMessage, CancellationToken cancellationToken = default)
+    {
+        var doctorRequest = await context.DoctorRequests
+            .Include(r => r.Doctor)
+            .Include(r => r.Team)
+            .FirstOrDefaultAsync(r => r.Id == requestId, cancellationToken);
+
+        if (doctorRequest is null)
+            return Result.Failure(DoctorRequestErrors.RequestNotFound);
+
+        if (doctorRequest.Doctor.UserId != CurrentUserId)
+            return Result.Failure(DoctorRequestErrors.Unauthorized);
+
+        if (doctorRequest.Status != RequestStatus.Pending)
+            return Result.Failure(DoctorRequestErrors.RequestNotPending);
+
+        doctorRequest.Status = RequestStatus.Rejected;
+        doctorRequest.ResponseMessage = responseMessage;
+        doctorRequest.RespondedAt = DateTime.UtcNow;
+        doctorRequest.RespondedByDoctorId = doctorRequest.DoctorId;
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        await notificationService.SendAsync(
+            doctorRequest.Team.LeaderId,
+            NotificationType.DoctorRequestReceived,
+            $"Your request for doctor supervision has been rejected",
+            doctorRequest.Id,
+            cancellationToken);
 
         return Result.Success();
     }

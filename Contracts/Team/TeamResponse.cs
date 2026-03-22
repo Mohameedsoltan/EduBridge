@@ -6,9 +6,15 @@ public record TeamResponse(
     Guid Id,
     string Name,
     string? Description,
+    string LeaderId,
     string LeaderName,
     int MaxMembers,
     int CurrentMembers,
     TeamStatus Status,
-    DateTime CreatedAt
+    // TA info
+    Guid? TaId,
+    string? TaName,
+    // Doctor info
+    Guid? DoctorId,
+    string? DoctorName
 );

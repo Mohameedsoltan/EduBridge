@@ -14,6 +14,7 @@ public class TaRequestsController(
     ILogger<TaRequestsController> logger) : ControllerBase
 {
     [HttpGet("ta/{taId:guid}")]
+    [Authorize(Roles = DefaultRoles.TA)]
     public async Task<IActionResult> GetIncomingRequestsAsync(
         [FromRoute] Guid taId, CancellationToken cancellationToken)
     {
@@ -25,6 +26,7 @@ public class TaRequestsController(
     }
 
     [HttpGet("team/{teamId:guid}")]
+    [Authorize(Roles = $"{DefaultRoles.Student}")]
     public async Task<IActionResult> GetTeamRequestsAsync(
         [FromRoute] Guid teamId, CancellationToken cancellationToken)
     {
@@ -51,7 +53,7 @@ public class TaRequestsController(
     }
 
     [HttpPut("{id:guid}/cancel")]
-    [Authorize(Roles = $"{DefaultRoles.Student},{DefaultRoles.TA}")]
+    [Authorize(Roles = $"{DefaultRoles.Student}")]
     public async Task<IActionResult> CancelAsync(
         [FromRoute] Guid id, CancellationToken cancellationToken)
     {
