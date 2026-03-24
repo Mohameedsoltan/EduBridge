@@ -1,0 +1,22 @@
+﻿using EduBridge.Abstractions;
+using EduBridge.Contracts.Notification;
+using NotificationType = EduBridge.Abstractions.Consts.NotificationType;
+
+namespace EduBridge.Services.Interfaces;
+
+public interface INotificationService
+{
+    // Queries
+    Task<Result<IEnumerable<NotificationResponse>>> GetUserNotificationsAsync(string userId,
+        CancellationToken cancellationToken = default);
+
+    Task<Result<int>> GetUnreadCountAsync(string userId, CancellationToken cancellationToken = default);
+
+    // Operations
+    Task<Result> MarkAsReadAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<Result> MarkAllAsReadAsync(string userId, CancellationToken cancellationToken = default);
+
+    // Internal - called by other services
+    Task<Result> SendAsync(string userId, NotificationType type, string message, Guid? relatedEntityId,
+        CancellationToken cancellationToken = default);
+}
