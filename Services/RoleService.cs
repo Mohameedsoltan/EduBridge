@@ -28,10 +28,7 @@ public class RoleService(
     {
         var role = await roleManager.FindByIdAsync(roleId);
 
-        if (role is null)
-            return Result.Failure<RoleResponse>(RoleErrors.RoleNotFound);
-
-        return Result.Success(new RoleResponse(role.Id, role.Name!, role.IsDefault));
+        return role is null ? Result.Failure<RoleResponse>(RoleErrors.RoleNotFound) : Result.Success(new RoleResponse(role.Id, role.Name!, role.IsDefault));
     }
 
     public async Task<Result> CreateRoleAsync(

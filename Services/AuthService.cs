@@ -68,7 +68,7 @@ public class AuthService(
 
             var response = new AuthResponse(token, expiresIn, refreshToken, refreshTokenExpiry);
 
-            return Result.Success(response);
+            return Result.Success(response); 
         }
 
         var error = result.IsNotAllowed

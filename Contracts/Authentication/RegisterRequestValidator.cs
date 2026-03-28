@@ -60,8 +60,7 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
                     ? code == settings.TaCode
                     : code == settings.DoctorCode)
             .WithMessage("Invalid security code for the selected role")
-            .When(x => x.Role == DefaultRoles.TA || x.Role == DefaultRoles.Doctor);
-
-
+            .When(x => x.Role is DefaultRoles.TA or DefaultRoles.Doctor);
+        
     }
 }

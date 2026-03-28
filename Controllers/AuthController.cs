@@ -1,4 +1,4 @@
-﻿using EduBridge.Abstractions;
+using EduBridge.Abstractions;
 using EduBridge.Contracts.Authentication;
 using EduBridge.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;

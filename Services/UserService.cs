@@ -1,4 +1,4 @@
-﻿using EduBridge.Abstractions;
+using EduBridge.Abstractions;
 using EduBridge.Contracts.User;
 using EduBridge.Entities;
 using EduBridge.Errors;
@@ -24,10 +24,7 @@ public class UserService(
             .Include(u => u.Skills).ThenInclude(us => us.Skill)
             .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
 
-        if (user is null)
-            return Result.Failure<UserProfileResponse>(UserErrors.UserNotFound);
-
-        return Result.Success(mapper.Map<UserProfileResponse>(user));
+        return user is null ? Result.Failure<UserProfileResponse>(UserErrors.UserNotFound) : Result.Success(mapper.Map<UserProfileResponse>(user));
     }
 
     public async Task<Result<UserResponse>> GetUserByIdAsync(
@@ -82,14 +79,13 @@ public class UserService(
 
         var result = await userManager.UpdateAsync(user);
 
-        if (!result.Succeeded)
-        {
-            var error = result.Errors.First();
-            return Result.Failure<UserProfileResponse>(
-                new Error(error.Code, error.Description, StatusCodes.Status400BadRequest));
-        }
+        if (result.Succeeded) 
+            return await GetCurrentUserAsync(userId, cancellationToken);
+        
+        var error = result.Errors.First();
+        return Result.Failure<UserProfileResponse>(
+            new Error(error.Code, error.Description, StatusCodes.Status400BadRequest));
 
-        return await GetCurrentUserAsync(userId, cancellationToken);
     }
 
     public async Task<Result> UploadProfileImageAsync(
