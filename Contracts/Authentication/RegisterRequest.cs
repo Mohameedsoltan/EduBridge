@@ -11,5 +11,6 @@ public record RegisterRequest(
     string? University,
     string Role,
     string? GitHubUrl,
-    string? LinkedInUrl
+    string? LinkedInUrl,
+    string? SecurityCode
 );

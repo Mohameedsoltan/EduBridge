@@ -1,12 +1,16 @@
 using EduBridge.Abstractions.Consts;
+using EduBridge.Settings;
 using FluentValidation;
+using Microsoft.Extensions.Options;
 
 namespace EduBridge.Contracts.Authentication;
 
 public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
 {
-    public RegisterRequestValidator()
+    public RegisterRequestValidator(IOptions<SecurityCodeSettings> securitySettings)
     {
+        var settings = securitySettings.Value;
+
         RuleFor(x => x.FirstName)
             .NotEmpty().WithMessage("First name is required")
             .MaximumLength(50).WithMessage("First name cannot exceed 50 characters");
@@ -47,5 +51,17 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
             .NotEmpty().WithMessage("Role is required")
             .Must(r => r is DefaultRoles.Student or DefaultRoles.TA or DefaultRoles.Doctor)
             .WithMessage("Invalid role");
+        
+        RuleFor(x => x.SecurityCode)
+            .NotEmpty()
+            .WithMessage("A security code is required to register as TA or Doctor")
+            .Must((req, code) =>
+                req.Role == DefaultRoles.TA
+                    ? code == settings.TaCode
+                    : code == settings.DoctorCode)
+            .WithMessage("Invalid security code for the selected role")
+            .When(x => x.Role == DefaultRoles.TA || x.Role == DefaultRoles.Doctor);
+
+
     }
 }

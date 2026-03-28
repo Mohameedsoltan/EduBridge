@@ -47,6 +47,7 @@ public static class DependencyInjection
             services.AddOpenApi();
 
             services.Configure<MailSettings>(config.GetSection(nameof(MailSettings)));
+            services.Configure<SecurityCodeSettings>(config.GetSection(SecurityCodeSettings.SectionName));
         }
 
         private void AddMapsterConfig()

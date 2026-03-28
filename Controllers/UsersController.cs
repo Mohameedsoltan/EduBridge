@@ -28,7 +28,6 @@ public class UsersController(
     }
 
     [HttpGet("{userId}")]
-    [Authorize(Roles = DefaultRoles.Admin)]
     public async Task<IActionResult> GetUserByIdAsync(
         [FromRoute] string userId, CancellationToken cancellationToken)
     {
@@ -40,7 +39,6 @@ public class UsersController(
     }
 
     [HttpGet("")]
-    [Authorize(Roles = DefaultRoles.Admin)]
     public async Task<IActionResult> GetAllUsersAsync(CancellationToken cancellationToken)
     {
         logger.LogInformation("Fetching all users");

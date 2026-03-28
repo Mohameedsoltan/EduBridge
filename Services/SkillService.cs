@@ -39,6 +39,7 @@ public class SkillService(ApplicationDbContext context) : ISkillService
             await context.SaveChangesAsync(cancellationToken);
             return Result.Success(skill.Id);
         }
+        
         catch (DbUpdateException)
         {
             var skill = await context.Skills

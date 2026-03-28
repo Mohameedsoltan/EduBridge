@@ -14,15 +14,12 @@ public class DoctorsController(
     IDoctorService doctorService,
     ILogger<DoctorsController> logger) : ControllerBase
 {
-    private readonly IDoctorService _doctorService = doctorService;
-    private readonly ILogger<DoctorsController> _logger = logger;
-
     [HttpGet("")]
     public async Task<IActionResult> GetAllAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Fetching all doctors");
+        logger.LogInformation("Fetching all doctors");
 
-        var result = await _doctorService.GetAllAsync(cancellationToken);
+        var result = await doctorService.GetAllAsync(cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
@@ -31,9 +28,9 @@ public class DoctorsController(
     public async Task<IActionResult> GetByIdAsync(
         [FromRoute] Guid id, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Fetching doctor with ID {DoctorId}", id);
+        logger.LogInformation("Fetching doctor with ID {DoctorId}", id);
 
-        var result = await _doctorService.GetByIdAsync(id, cancellationToken);
+        var result = await doctorService.GetByIdAsync(id, cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
@@ -41,9 +38,9 @@ public class DoctorsController(
     [HttpGet("available")]
     public async Task<IActionResult> GetAvailableDoctorsAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Fetching all available doctors");
+        logger.LogInformation("Fetching all available doctors");
 
-        var result = await _doctorService.GetAvailableDoctorsAsync(cancellationToken);
+        var result = await doctorService.GetAvailableDoctorsAsync(cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
@@ -52,9 +49,9 @@ public class DoctorsController(
     [Authorize(Roles = DefaultRoles.Doctor)]
     public async Task<IActionResult> GetSupervisedTeamsAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Fetching supervised teams for current doctor");
+        logger.LogInformation("Fetching supervised teams for current doctor");
 
-        var result = await _doctorService.GetSupervisedTeamsAsync(cancellationToken);
+        var result = await doctorService.GetSupervisedTeamsAsync(cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
@@ -64,9 +61,9 @@ public class DoctorsController(
     public async Task<IActionResult> CreateAsync(
         [FromQuery] string currentUserId, [FromBody] CreateDoctorRequest request, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Creating doctor profile for current user");
+        logger.LogInformation("Creating doctor profile for current user");
 
-        var result = await _doctorService.CreateAsync(currentUserId, request, cancellationToken);
+        var result = await doctorService.CreateAsync(currentUserId, request, cancellationToken);
 
         return result.IsSuccess ? Ok() : result.ToProblem();
     }
@@ -78,9 +75,9 @@ public class DoctorsController(
         [FromBody] UpdateDoctorRequest request,
         CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Updating doctor with ID {DoctorId}", id);
+        logger.LogInformation("Updating doctor with ID {DoctorId}", id);
 
-        var result = await _doctorService.UpdateAsync(id, request, cancellationToken);
+        var result = await doctorService.UpdateAsync(id, request, cancellationToken);
 
         return result.IsSuccess ? Ok() : result.ToProblem();
     }
@@ -90,9 +87,9 @@ public class DoctorsController(
     public async Task<IActionResult> DeleteAsync(
         [FromRoute] Guid id, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Deleting doctor with ID {DoctorId}", id);
+        logger.LogInformation("Deleting doctor with ID {DoctorId}", id);
 
-        var result = await _doctorService.DeleteAsync(id, cancellationToken);
+        var result = await doctorService.DeleteAsync(id, cancellationToken);
 
         return result.IsSuccess ? Ok() : result.ToProblem();
     }

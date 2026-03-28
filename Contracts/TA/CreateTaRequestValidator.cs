@@ -1,7 +1,6 @@
-using EduBridge.Contracts.TA;
 using FluentValidation;
 
-namespace EduBridge.Validators;
+namespace EduBridge.Contracts.TA;
 
 public class CreateTaRequestValidator : AbstractValidator<CreateTaRequest>
 {
